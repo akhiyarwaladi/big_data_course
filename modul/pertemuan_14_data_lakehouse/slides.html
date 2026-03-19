@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pertemuan 14 — Data Lakehouse Architecture</title>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;800&family=Nunito:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES — SWISS MODERN THEME
+           =========================================== */
+        :root {
+            --bg-white: #ffffff;
+            --bg-light: #f8f8f8;
+            --text-primary: #0a0a0a;
+            --text-secondary: #555;
+            --text-muted: #888;
+            --accent-red: #ff3300;
+            --accent-red-light: rgba(255, 51, 0, 0.08);
+            --accent-red-glow: rgba(255, 51, 0, 0.15);
+            --grid-color: rgba(0,0,0,0.05);
+            --border-color: rgba(0,0,0,0.1);
+            --font-display: 'Archivo', sans-serif;
+            --font-body: 'Nunito', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration-normal: 0.6s;
+
+            --title-size: clamp(2.2rem, 6vw, 5rem);
+            --h2-size: clamp(1.8rem, 4.5vw, 3.2rem);
+            --h3-size: clamp(1.3rem, 3vw, 2.2rem);
+            --body-size: clamp(1rem, 2vw, 1.5rem);
+            --small-size: clamp(0.85rem, 1.4vw, 1.15rem);
+            --slide-padding: clamp(1rem, 3vw, 2.5rem);
+            --content-gap: clamp(0.5rem, 1.5vw, 1.5rem);
+            --element-gap: clamp(0.25rem, 0.8vw, 0.75rem);
+        }
+
+        /* ===========================================
+           BASE RESET
+           =========================================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ===========================================
+           VIEWPORT FITTING — MANDATORY BASE STYLES
+           =========================================== */
+        html, body { height: 100%; overflow-x: hidden; }
+        html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+
+        .slide {
+            width: 100vw; height: 100vh; height: 100dvh;
+            overflow: hidden; scroll-snap-align: start;
+            display: flex; flex-direction: column; position: relative;
+        }
+        .slide-content {
+            flex: 1; display: flex; flex-direction: column; justify-content: center;
+            max-height: 100%; overflow: hidden;
+            padding: clamp(1.5rem, 3vh, 3rem) var(--slide-padding);
+            padding-left: clamp(2.5rem, 5vw, 5rem);
+            padding-right: clamp(2rem, 4vw, 4rem);
+        }
+        .card, .container, .content-box {
+            max-width: min(95vw, 1200px); max-height: min(90vh, 800px);
+        }
+        .feature-list, .bullet-list { gap: clamp(0.4rem, 1vh, 1rem); }
+        .feature-list li, .bullet-list li { font-size: var(--body-size); line-height: 1.4; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+            gap: clamp(0.5rem, 1.5vw, 1rem);
+        }
+        img, .image-container { max-width: 100%; max-height: min(50vh, 400px); object-fit: contain; }
+
+        @media (max-height: 700px) {
+            :root {
+                --slide-padding: clamp(0.75rem, 2vw, 1.5rem);
+                --content-gap: clamp(0.4rem, 1vw, 0.8rem);
+                --title-size: clamp(1.6rem, 5vw, 3rem);
+                --h2-size: clamp(1.3rem, 3.5vw, 2.2rem);
+                --body-size: clamp(0.85rem, 1.6vw, 1.2rem);
+            }
+        }
+        @media (max-height: 600px) {
+            :root {
+                --slide-padding: clamp(0.5rem, 1.5vw, 1rem);
+                --content-gap: clamp(0.3rem, 0.8vw, 0.6rem);
+                --title-size: clamp(1.4rem, 4.5vw, 2.5rem);
+                --body-size: clamp(0.8rem, 1.4vw, 1.1rem);
+            }
+            .nav-dots, .keyboard-hint, .decorative { display: none; }
+        }
+        @media (max-height: 500px) {
+            :root {
+                --slide-padding: clamp(0.4rem, 1.5vw, 0.8rem);
+                --title-size: clamp(1.2rem, 4vw, 2rem);
+                --h2-size: clamp(1rem, 3vw, 1.5rem);
+                --body-size: clamp(0.75rem, 1.2vw, 1rem);
+            }
+        }
+        @media (max-width: 600px) {
+            :root { --title-size: clamp(1.5rem, 8vw, 3rem); }
+            .grid { grid-template-columns: 1fr; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.2s !important;
+            }
+            html { scroll-behavior: auto; }
+        }
+
+        /* ===========================================
+           SWISS MODERN — GRID BACKGROUND
+           =========================================== */
+        .slide::before {
+            content: '';
+            position: absolute; inset: 0;
+            background-image:
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: clamp(30px, 5vw, 60px) clamp(30px, 5vw, 60px);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .slide > * { position: relative; z-index: 1; }
+
+        /* ===========================================
+           ACCENT BAR (left edge)
+           =========================================== */
+        .accent-bar {
+            position: absolute; left: 0; top: 0; bottom: 0;
+            width: clamp(4px, 0.5vw, 6px);
+            background: var(--accent-red);
+            z-index: 2;
+        }
+
+        /* ===========================================
+           TYPOGRAPHY
+           =========================================== */
+        body { font-family: var(--font-body); color: var(--text-primary); background: var(--bg-white); }
+
+        h1, h2, h3 { font-family: var(--font-display); font-weight: 800; line-height: 1.1; }
+        h1 { font-size: var(--title-size); }
+        h2 { font-size: var(--h2-size); margin-bottom: var(--content-gap); }
+        h3 { font-size: var(--h3-size); }
+        p, li { font-size: var(--body-size); line-height: 1.6; color: var(--text-secondary); }
+        .highlight { color: var(--accent-red); }
+        .tag-label {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(0.8rem, 1.3vw, 1.1rem);
+            color: var(--accent-red); text-transform: uppercase; letter-spacing: 0.2em;
+            margin-bottom: var(--element-gap);
+        }
+
+        /* ===========================================
+           LARGE BACKGROUND NUMBER
+           =========================================== */
+        .bg-number {
+            position: absolute;
+            right: clamp(1rem, 4vw, 4rem);
+            top: clamp(0.5rem, 2vh, 2rem);
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(5rem, 15vw, 12rem);
+            color: rgba(0,0,0,0.03);
+            line-height: 1; z-index: 0; pointer-events: none;
+        }
+
+        /* ===========================================
+           SECTION DIVIDER SLIDES
+           =========================================== */
+        .slide.section-divider {
+            background: var(--text-primary);
+        }
+        .slide.section-divider::before {
+            background-image:
+                linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+        }
+        .slide.section-divider .accent-bar { background: var(--accent-red); }
+        .slide.section-divider h2 { color: #fff; }
+        .slide.section-divider .section-num {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(4rem, 12vw, 10rem);
+            color: rgba(255,255,255,0.06);
+            position: absolute;
+            right: clamp(2rem, 6vw, 6rem);
+            bottom: clamp(1rem, 4vh, 4rem);
+        }
+        .slide.section-divider .tag-label { color: var(--accent-red); }
+
+        /* ===========================================
+           TITLE SLIDE
+           =========================================== */
+        .slide.title-slide { background: var(--bg-white); }
+        .title-meta {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+            color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em;
+            margin-bottom: clamp(0.5rem, 1vh, 1rem);
+        }
+        .title-slide h1 {
+            font-size: clamp(2.5rem, 6.5vw, 5.5rem);
+            margin-bottom: clamp(0.5rem, 1.5vh, 1.5rem);
+        }
+        .title-desc {
+            font-size: clamp(1.1rem, 2vw, 1.5rem);
+            color: var(--text-secondary);
+            max-width: 700px; line-height: 1.6;
+            margin-bottom: clamp(0.75rem, 2vh, 1.5rem);
+        }
+        .tags {
+            display: flex; gap: clamp(8px, 1vw, 14px); flex-wrap: wrap;
+        }
+        .tag {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.7rem, 1.1vw, 0.95rem);
+            text-transform: uppercase; letter-spacing: 0.08em;
+            padding: clamp(4px, 0.6vh, 8px) clamp(10px, 1.2vw, 18px);
+            border: 2px solid var(--text-primary);
+            color: var(--text-primary);
+        }
+        .tag.active { background: var(--text-primary); color: var(--bg-white); }
+
+        /* ===========================================
+           CONTENT COMPONENTS
+           =========================================== */
+        /* Comparison columns */
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: clamp(1rem, 3vw, 3rem);
+            margin-top: var(--content-gap);
+        }
+        @media (max-width: 600px) { .comparison { grid-template-columns: 1fr; } }
+        .comparison-col h3 {
+            font-size: clamp(1.1rem, 1.8vw, 1.5rem);
+            margin-bottom: var(--element-gap);
+            padding-bottom: var(--element-gap);
+            border-bottom: 3px solid var(--accent-red);
+        }
+        .comparison-col.alt h3 { border-bottom-color: var(--text-primary); }
+        .comparison-col ul { list-style: none; }
+        .comparison-col li {
+            font-size: clamp(0.9rem, 1.4vw, 1.2rem);
+            padding: clamp(3px, 0.4vh, 6px) 0;
+            padding-left: 1.2em;
+            position: relative;
+        }
+        .comparison-col li::before {
+            content: '→';
+            position: absolute; left: 0;
+            color: var(--accent-red);
+            font-weight: 700;
+        }
+
+        /* Steps */
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+            gap: clamp(0.5rem, 1.5vw, 1.5rem);
+            margin-top: var(--content-gap);
+        }
+        .step {
+            border-left: 3px solid var(--accent-red);
+            padding-left: clamp(0.5rem, 1vw, 1rem);
+        }
+        .step-num {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(1.5rem, 2.5vw, 2.2rem);
+            color: var(--accent-red); line-height: 1;
+        }
+        .step-title {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.9rem, 1.4vw, 1.2rem);
+            color: var(--text-primary);
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin: clamp(2px, 0.3vh, 4px) 0;
+        }
+        .step-desc {
+            font-size: clamp(0.85rem, 1.3vw, 1.1rem);
+            color: var(--text-secondary);
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: #1a1a1a;
+            border-radius: 4px;
+            padding: clamp(0.5rem, 1.5vw, 1.5rem);
+            margin-top: var(--element-gap);
+            overflow-x: auto;
+            max-height: min(45vh, 350px);
+        }
+        .code-block code {
+            font-family: var(--font-mono);
+            font-size: clamp(0.85rem, 1.4vw, 1.15rem);
+            color: #e0e0e0; line-height: 1.5;
+            white-space: pre;
+        }
+        .code-block .kw { color: #ff7b72; }
+        .code-block .fn { color: #d2a8ff; }
+        .code-block .str { color: #a5d6ff; }
+        .code-block .cm { color: #8b949e; }
+        .code-block .num { color: #79c0ff; }
+
+        /* Info cards */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+            gap: clamp(0.5rem, 1vw, 1rem);
+            margin-top: var(--content-gap);
+        }
+        .info-card {
+            padding: clamp(0.5rem, 1.5vw, 1.5rem);
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+        .info-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0;
+            height: 3px; background: var(--accent-red);
+        }
+        .info-card h4 {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(0.95rem, 1.5vw, 1.25rem);
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin-bottom: clamp(2px, 0.5vh, 6px);
+        }
+        .info-card p { font-size: clamp(0.9rem, 1.3vw, 1.15rem); }
+
+        /* Benchmark bars */
+        .bench-row {
+            display: flex; align-items: center;
+            gap: clamp(0.5rem, 1vw, 1rem);
+            margin-bottom: clamp(0.3rem, 0.5vh, 0.5rem);
+        }
+        .bench-label {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+            min-width: clamp(70px, 10vw, 120px);
+            text-align: right;
+        }
+        .bench-bar {
+            height: clamp(28px, 4vh, 40px);
+            background: var(--accent-red);
+            border-radius: 2px;
+            display: flex; align-items: center;
+            padding-left: clamp(6px, 0.8vw, 12px);
+            transition: width 1s var(--ease-out-expo);
+        }
+        .bench-bar.alt { background: var(--text-primary); }
+        .bench-bar span {
+            font-family: var(--font-mono);
+            font-size: clamp(0.75rem, 1.1vw, 1rem);
+            color: #fff; white-space: nowrap;
+            font-weight: 500;
+        }
+        .bench-speedup {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(1rem, 1.5vw, 1.3rem);
+            color: var(--accent-red);
+        }
+
+        /* Bullet list */
+        .content-list {
+            list-style: none;
+            margin-top: var(--element-gap);
+        }
+        .content-list li {
+            padding: clamp(3px, 0.5vh, 6px) 0;
+            padding-left: 1.5em; position: relative;
+            font-size: var(--body-size);
+        }
+        .content-list li::before {
+            content: ''; position: absolute;
+            left: 0; top: clamp(10px, 1.2vh, 14px);
+            width: 8px; height: 3px;
+            background: var(--accent-red);
+        }
+
+        /* Tip/warning box */
+        .tip-box {
+            border-left: 4px solid var(--accent-red);
+            background: var(--accent-red-light);
+            padding: clamp(0.5rem, 1vw, 1rem);
+            margin-top: var(--element-gap);
+        }
+        .tip-box p { font-size: clamp(0.9rem, 1.4vw, 1.2rem); color: var(--text-primary); }
+        .tip-box strong { color: var(--accent-red); }
+
+        /* Table */
+        .data-table {
+            width: 100%; border-collapse: collapse;
+            margin-top: var(--element-gap);
+            font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+        }
+        .data-table th {
+            font-family: var(--font-display); font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            font-size: clamp(0.8rem, 1.2vw, 1.05rem);
+            text-align: left;
+            padding: clamp(6px, 0.8vh, 12px) clamp(8px, 1.2vw, 16px);
+            border-bottom: 2px solid var(--text-primary);
+            color: var(--text-primary);
+        }
+        .data-table td {
+            padding: clamp(5px, 0.7vh, 10px) clamp(8px, 1.2vw, 16px);
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+        .data-table td:first-child { font-weight: 600; color: var(--text-primary); }
+
+        /* Two column layout */
+        .two-col {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: clamp(1rem, 3vw, 3rem);
+            margin-top: var(--content-gap);
+        }
+        @media (max-width: 600px) { .two-col { grid-template-columns: 1fr; } }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal {
+            opacity: 0; transform: translateY(20px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .reveal-left {
+            opacity: 0; transform: translateX(-30px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .slide.visible .reveal,
+        .slide.visible .reveal-left {
+            opacity: 1; transform: translate(0);
+        }
+        .slide.visible .reveal:nth-child(1) { transition-delay: 0.05s; }
+        .slide.visible .reveal:nth-child(2) { transition-delay: 0.1s; }
+        .slide.visible .reveal:nth-child(3) { transition-delay: 0.15s; }
+        .slide.visible .reveal:nth-child(4) { transition-delay: 0.2s; }
+        .slide.visible .reveal:nth-child(5) { transition-delay: 0.25s; }
+        .slide.visible .reveal:nth-child(6) { transition-delay: 0.3s; }
+
+        /* ===========================================
+           PROGRESS BAR
+           =========================================== */
+        .progress-bar {
+            position: fixed; top: 0; left: 0;
+            height: 3px; background: var(--accent-red);
+            z-index: 9999; transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        /* ===========================================
+           NAV DOTS
+           =========================================== */
+        .nav-dots {
+            position: fixed; right: clamp(8px, 1vw, 16px);
+            top: 50%; transform: translateY(-50%);
+            display: flex; flex-direction: column;
+            gap: clamp(4px, 0.5vh, 8px); z-index: 9998;
+        }
+        .nav-dot {
+            width: clamp(6px, 0.5vw, 8px); height: clamp(6px, 0.5vw, 8px);
+            background: var(--border-color);
+            border-radius: 50%; cursor: pointer;
+            transition: all 0.3s ease; border: none; padding: 0;
+        }
+        .nav-dot.active {
+            background: var(--accent-red);
+            transform: scale(1.4);
+        }
+
+        /* ===========================================
+           EDIT MODE (opt-in)
+           =========================================== */
+        .edit-hotzone {
+            position: fixed; top: 0; left: 0;
+            width: 80px; height: 80px;
+            z-index: 10000; cursor: pointer;
+        }
+        .edit-toggle {
+            position: fixed; top: 16px; left: 16px;
+            width: 36px; height: 36px;
+            background: var(--text-primary); color: #fff;
+            border: none; border-radius: 4px;
+            font-size: 16px; cursor: pointer;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 10001;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+        .edit-toggle.active { background: var(--accent-red); }
+        .editing-active [contenteditable="true"] {
+            outline: 2px dashed var(--accent-red-glow);
+            outline-offset: 2px;
+            cursor: text;
+        }
+        .edit-save-notice {
+            position: fixed; bottom: 20px; left: 50%;
+            transform: translateX(-50%);
+            background: var(--text-primary); color: #fff;
+            padding: 8px 20px; border-radius: 4px;
+            font-family: var(--font-body); font-size: 13px;
+            opacity: 0; transition: opacity 0.3s;
+            z-index: 10002; pointer-events: none;
+        }
+        .edit-save-notice.show { opacity: 1; }
+    </style>
+</head>
+<body>
+    <!-- Progress bar -->
+    <div class="progress-bar" id="progressBar"></div>
+    <!-- Nav dots (generated by JS) -->
+    <nav class="nav-dots" id="navDots"></nav>
+    <!-- Edit mode -->
+    <div class="edit-hotzone" id="editHotzone"></div>
+    <button class="edit-toggle" id="editToggle" title="Edit mode (E)">&#9998;</button>
+    <div class="edit-save-notice" id="saveNotice">Tersimpan!</div>
+
+    <!-- ==========================================
+         SLIDE 1 — TITLE
+         ========================================== -->
+    <section class="slide title-slide" data-slide="0">
+        <div class="accent-bar"></div>
+        <div class="bg-number">14</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Pertemuan 14</p>
+            <h1 class="reveal">Data Lakehouse<br><span class="highlight">Architecture</span></h1>
+            <p class="title-desc reveal">Warehouse + Lake = Lakehouse. ACID, time travel, medallion architecture — semua di satu tempat.</p>
+            <div class="tags reveal">
+                <span class="tag active">Lakehouse</span>
+                <span class="tag">Iceberg</span>
+                <span class="tag">Delta Lake</span>
+                <span class="tag">Parquet</span>
+                <span class="tag">Gratis</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 2 — SECTION: SETUP
+         ========================================== -->
+    <section class="slide section-divider" data-slide="1">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 1</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Setup &<br>Persiapan</h2>
+            <div class="section-num">01</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 3 — SETUP ENVIRONMENT
+         ========================================== -->
+    <section class="slide" data-slide="2">
+        <div class="accent-bar"></div>
+        <div class="bg-number">01</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Setup</p>
+            <h2 class="reveal">Setup Environment di Colab</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># Cell 1: Install dependencies</span>
+!pip install duckdb polars pyarrow -q
+
+<span class="cm"># Cell 2: Import libraries</span>
+<span class="kw">import</span> duckdb, polars <span class="kw">as</span> pl, pyarrow <span class="kw">as</span> pa
+<span class="kw">import</span> pyarrow.parquet <span class="kw">as</span> pq
+<span class="kw">import</span> os, json, datetime, random
+
+<span class="cm"># Cell 3: Buat struktur folder Lakehouse</span>
+<span class="kw">for</span> folder <span class="kw">in</span> [<span class="str">'bronze'</span>, <span class="str">'silver'</span>, <span class="str">'gold'</span>, <span class="str">'metadata'</span>]:
+    os.<span class="fn">makedirs</span>(folder, exist_ok=<span class="kw">True</span>)
+<span class="fn">print</span>(<span class="str">"Lakehouse folders ready!"</span>)</code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Tanpa cloud storage!</strong> Semua berjalan lokal di Colab. Konsep sama, biaya nol.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 4 — GENERATE DATA
+         ========================================== -->
+    <section class="slide" data-slide="3">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Setup</p>
+            <h2 class="reveal">Generate Data Logistik</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># Generate 50K+ shipment records, partitioned by month</span>
+random.<span class="fn">seed</span>(<span class="num">42</span>)
+cities = [<span class="str">'Jakarta'</span>,<span class="str">'Surabaya'</span>,<span class="str">'Bandung'</span>,<span class="str">'Medan'</span>,<span class="str">'Semarang'</span>]
+statuses = [<span class="str">'delivered'</span>,<span class="str">'in_transit'</span>,<span class="str">'returned'</span>,<span class="str">'cancelled'</span>]
+rows = []
+<span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(<span class="num">50000</span>):
+    dt = datetime.date(<span class="num">2024</span>, random.<span class="fn">randint</span>(<span class="num">1</span>,<span class="num">12</span>), random.<span class="fn">randint</span>(<span class="num">1</span>,<span class="num">28</span>))
+    rows.<span class="fn">append</span>({
+        <span class="str">'order_id'</span>: f<span class="str">'ORD-{i:06d}'</span>,
+        <span class="str">'ship_date'</span>: dt.<span class="fn">isoformat</span>(),
+        <span class="str">'month'</span>: dt.<span class="fn">strftime</span>(<span class="str">'%Y-%m'</span>),
+        <span class="str">'origin'</span>: random.<span class="fn">choice</span>(cities),
+        <span class="str">'destination'</span>: random.<span class="fn">choice</span>(cities),
+        <span class="str">'weight_kg'</span>: <span class="fn">round</span>(random.<span class="fn">uniform</span>(<span class="num">0.5</span>, <span class="num">50</span>), <span class="num">2</span>),
+        <span class="str">'cost'</span>: random.<span class="fn">randint</span>(<span class="num">10000</span>, <span class="num">500000</span>),
+        <span class="str">'status'</span>: random.<span class="fn">choice</span>(statuses),
+        <span class="str">'sla_days'</span>: random.<span class="fn">randint</span>(<span class="num">1</span>, <span class="num">7</span>),
+        <span class="str">'actual_days'</span>: random.<span class="fn">randint</span>(<span class="num">1</span>, <span class="num">10</span>),
+    })</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 5 — SECTION: TEORI & KONSEP
+         ========================================== -->
+    <section class="slide section-divider" data-slide="4">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 2</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Teori &<br>Konsep</h2>
+            <div class="section-num">02</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 6 — 3 ERA PENYIMPANAN DATA
+         ========================================== -->
+    <section class="slide" data-slide="5">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Sejarah</p>
+            <h2 class="reveal">3 Era Penyimpanan Data</h2>
+            <div class="steps reveal">
+                <div class="step">
+                    <div class="step-num" style="font-size: clamp(0.9rem, 1.5vw, 1.3rem);">1990–2010</div>
+                    <div class="step-title">Era Data Warehouse</div>
+                    <div class="step-desc">Rapi, ACID, SQL-friendly. Tapi mahal (Oracle, Teradata), hanya structured data, sulit scale.</div>
+                </div>
+                <div class="step">
+                    <div class="step-num" style="font-size: clamp(0.9rem, 1.5vw, 1.3rem);">2010–2020</div>
+                    <div class="step-title">Era Data Lake</div>
+                    <div class="step-desc">Murah (HDFS/S3), semua format (CSV, JSON, gambar). Tapi "data swamp" — no ACID, no schema, no versioning.</div>
+                </div>
+                <div class="step">
+                    <div class="step-num" style="font-size: clamp(0.9rem, 1.5vw, 1.3rem);">2020–Now</div>
+                    <div class="step-title">Era Lakehouse</div>
+                    <div class="step-desc">Murah + ACID + time travel + schema evolution. Open table formats di atas object storage.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 7 — MASALAH DATA LAKE
+         ========================================== -->
+    <section class="slide" data-slide="6">
+        <div class="accent-bar"></div>
+        <div class="bg-number">!</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Masalah</p>
+            <h2 class="reveal">Masalah Data Lake: <span class="highlight">"Data Swamp"</span></h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>No Schema Enforcement</h4>
+                    <p>Siapa saja bisa taruh file apapun. Data inconsistent, kolom berubah tanpa kontrol.</p>
+                </div>
+                <div class="info-card">
+                    <h4>No ACID</h4>
+                    <p>Partial writes saat crash = data corrupt. Tidak ada rollback. Concurrent writes berantakan.</p>
+                </div>
+                <div class="info-card">
+                    <h4>No Versioning</h4>
+                    <p>Tidak bisa query data minggu lalu. Audit trail tidak ada. Salah overwrite = hilang selamanya.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Data Quality Issues</h4>
+                    <p>Duplikat, null tanpa validasi, tipe data campur. Siapa yang bertanggung jawab?</p>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>80% Data Lake projects gagal</strong> karena masalah-masalah di atas (Gartner).</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 8 — APA ITU LAKEHOUSE?
+         ========================================== -->
+    <section class="slide" data-slide="7">
+        <div class="accent-bar"></div>
+        <div class="bg-number">&#9671;</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Konsep Inti</p>
+            <h2 class="reveal">Apa Itu Data Lakehouse?</h2>
+            <p class="reveal" style="max-width: 650px; margin-bottom: var(--content-gap);">Arsitektur yang menggabungkan <strong>keunggulan Data Warehouse</strong> (ACID, schema, SQL) dengan <strong>keunggulan Data Lake</strong> (murah, open format, semua tipe data) menggunakan <strong>open table formats</strong> di atas object storage.</p>
+            <div class="comparison reveal">
+                <div class="comparison-col alt">
+                    <h3>Dari Warehouse</h3>
+                    <ul>
+                        <li>ACID transactions</li>
+                        <li>Schema enforcement</li>
+                        <li>SQL query engine</li>
+                        <li>Data governance</li>
+                    </ul>
+                </div>
+                <div class="comparison-col">
+                    <h3>Dari Data Lake</h3>
+                    <ul>
+                        <li>Open file formats (Parquet)</li>
+                        <li>Murah (object storage)</li>
+                        <li>Semua tipe data</li>
+                        <li>Decoupled compute/storage</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 9 — TABLE FORMATS COMPARISON
+         ========================================== -->
+    <section class="slide" data-slide="8">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Perbandingan</p>
+            <h2 class="reveal">Open Table Formats</h2>
+            <table class="data-table reveal">
+                <thead>
+                    <tr>
+                        <th>Fitur</th>
+                        <th>Apache Iceberg</th>
+                        <th>Delta Lake</th>
+                        <th>Apache Hudi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>Dibuat oleh</td><td>Netflix (2017)</td><td>Databricks (2019)</td><td>Uber (2016)</td></tr>
+                    <tr><td>ACID</td><td>Ya</td><td>Ya</td><td>Ya</td></tr>
+                    <tr><td>Time Travel</td><td>Snapshot-based</td><td>Transaction log</td><td>Timeline-based</td></tr>
+                    <tr><td>Schema Evolution</td><td>Full support</td><td>Full support</td><td>Partial</td></tr>
+                    <tr><td>Partition Evolution</td><td>Hidden partitioning</td><td>Manual</td><td>Manual</td></tr>
+                    <tr><td>Engine Support</td><td>Spark, Flink, Trino, DuckDB</td><td>Spark, DuckDB</td><td>Spark, Flink</td></tr>
+                    <tr><td>Adopsi 2025</td><td>Paling populer</td><td>Databricks ecosystem</td><td>Niche use cases</td></tr>
+                </tbody>
+            </table>
+            <div class="tip-box reveal">
+                <p><strong>Iceberg menang adopsi</strong> karena engine-agnostic. Delta Lake kuat di Databricks ecosystem.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 10 — ACID TRANSACTIONS
+         ========================================== -->
+    <section class="slide" data-slide="9">
+        <div class="accent-bar"></div>
+        <div class="bg-number">A</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Fitur Lakehouse</p>
+            <h2 class="reveal">ACID Transactions</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>Atomicity</h4>
+                    <p>Semua atau tidak sama sekali. Write gagal di tengah? Rollback otomatis, data tetap konsisten.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Consistency</h4>
+                    <p>Schema enforced. Kolom harus sesuai tipe data. Tidak bisa taruh string di kolom integer.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Isolation</h4>
+                    <p>Multiple writers tidak saling ganggu. Concurrent reads tetap dapat snapshot yang konsisten.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Durability</h4>
+                    <p>Sekali committed, data aman. No partial writes. Metadata + data files terpisah tapi sinkron.</p>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Tanpa ACID:</strong> partial write saat crash = data corrupt yang sulit di-debug.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 11 — TIME TRAVEL
+         ========================================== -->
+    <section class="slide" data-slide="10">
+        <div class="accent-bar"></div>
+        <div class="bg-number">T</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Fitur Lakehouse</p>
+            <h2 class="reveal">Time Travel</h2>
+            <p class="reveal" style="max-width: 650px; margin-bottom: var(--content-gap);">Query data pada <strong>versi atau tanggal tertentu</strong> di masa lalu. Setiap write membuat snapshot baru, snapshot lama tetap tersedia.</p>
+            <div class="steps reveal">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-title">Audit Trail</div>
+                    <div class="step-desc">Siapa mengubah apa, kapan? Compliance regulasi jadi mudah.</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-title">Rollback</div>
+                    <div class="step-desc">Pipeline error? Rollback ke versi sebelumnya dalam hitungan detik.</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div class="step-title">Reprodusibilitas</div>
+                    <div class="step-desc">ML model training ulang pakai data persis sama seperti 3 bulan lalu.</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">4</div>
+                    <div class="step-title">Diff & Debug</div>
+                    <div class="step-desc">Bandingkan data versi A vs B. Cari tahu kapan bug masuk pipeline.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 12 — SCHEMA EVOLUTION
+         ========================================== -->
+    <section class="slide" data-slide="11">
+        <div class="accent-bar"></div>
+        <div class="bg-number">S</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Fitur Lakehouse</p>
+            <h2 class="reveal">Schema Evolution</h2>
+            <p class="reveal" style="max-width: 650px; margin-bottom: var(--content-gap);">Ubah schema tabel <strong>tanpa rewrite semua data</strong>. Tambah kolom, rename, reorder — backward compatible.</p>
+            <div class="comparison reveal">
+                <div class="comparison-col alt">
+                    <h3>Tanpa Schema Evolution</h3>
+                    <ul>
+                        <li>Tambah kolom = rewrite seluruh tabel</li>
+                        <li>Downtime berjam-jam untuk ALTER TABLE</li>
+                        <li>Pipeline lama break karena schema berubah</li>
+                        <li>Biaya compute tinggi untuk migrasi</li>
+                    </ul>
+                </div>
+                <div class="comparison-col">
+                    <h3>Dengan Schema Evolution</h3>
+                    <ul>
+                        <li>Tambah kolom = update metadata saja</li>
+                        <li>Zero downtime, instan</li>
+                        <li>Old readers tetap bisa baca (backward compatible)</li>
+                        <li>Kolom baru default NULL untuk data lama</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 13 — MEDALLION ARCHITECTURE
+         ========================================== -->
+    <section class="slide" data-slide="12">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Arsitektur</p>
+            <h2 class="reveal">Medallion Architecture</h2>
+            <div class="steps reveal">
+                <div class="step">
+                    <div class="step-num" style="color: #cd7f32;">B</div>
+                    <div class="step-title">Bronze Layer (Raw)</div>
+                    <div class="step-desc">Data mentah dari sumber. Tidak diubah. Append-only. Parquet partitioned by date/month. "Single source of truth" mentah.</div>
+                </div>
+                <div class="step">
+                    <div class="step-num" style="color: #c0c0c0;">S</div>
+                    <div class="step-title">Silver Layer (Cleaned)</div>
+                    <div class="step-desc">Deduplikasi, validasi tipe data, filter invalid rows, tambah derived columns. Schema enforced. Siap untuk analisis.</div>
+                </div>
+                <div class="step">
+                    <div class="step-num" style="color: #ffd700;">G</div>
+                    <div class="step-title">Gold Layer (Marts)</div>
+                    <div class="step-desc">Agregasi bisnis: daily_revenue, sla_compliance, customer_metrics. Siap untuk dashboard dan reporting.</div>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Partitioning di Bronze</strong> memungkinkan partition pruning — query hanya baca bulan yang dibutuhkan.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 14 — MEDALLION VISUAL
+         ========================================== -->
+    <section class="slide" data-slide="13">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Arsitektur</p>
+            <h2 class="reveal">Alur Data Medallion</h2>
+            <div class="code-block reveal">
+                <code><span class="cm">  SOURCE DATA          BRONZE             SILVER              GOLD</span>
+<span class="cm">  ──────────          ──────             ──────              ────</span>
+
+  CSV/JSON/API   <span class="kw">──►</span>   Raw Parquet   <span class="kw">──►</span>   Cleaned +      <span class="kw">──►</span>   Aggregated
+  (messy data)        (partitioned       Validated           Marts
+                       by month)         (schema             (daily_revenue,
+                                          enforced)           sla_report)
+
+<span class="cm">  ┌─────────────────────────────────────────────────────────────────┐</span>
+<span class="cm">  │  metadata/                                                      │</span>
+<span class="cm">  │  ├── versions.json   → track semua versi (time travel)         │</span>
+<span class="cm">  │  ├── schema.json     → current schema (schema evolution)       │</span>
+<span class="cm">  │  └── quality.json    → data quality check results              │</span>
+<span class="cm">  └─────────────────────────────────────────────────────────────────┘</span></code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 15 — SECTION: PRAKTIKUM
+         ========================================== -->
+    <section class="slide section-divider" data-slide="14">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 3</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Praktikum<br>Hands-on</h2>
+            <div class="section-num">03</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 16 — BUILD BRONZE LAYER
+         ========================================== -->
+    <section class="slide" data-slide="15">
+        <div class="accent-bar"></div>
+        <div class="bg-number">B</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 1</p>
+            <h2 class="reveal">Build Bronze Layer</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># CSV → Partitioned Parquet by month</span>
+<span class="kw">import</span> polars <span class="kw">as</span> pl
+
+df = pl.<span class="fn">DataFrame</span>(rows)
+
+<span class="cm"># Partitioned write: satu file per bulan</span>
+<span class="kw">for</span> month, group <span class="kw">in</span> df.<span class="fn">group_by</span>(<span class="str">'month'</span>):
+    path = f<span class="str">'bronze/shipments_{month[0]}.parquet'</span>
+    group.<span class="fn">write_parquet</span>(path)
+    <span class="fn">print</span>(f<span class="str">'  Wrote {len(group)} rows → {path}'</span>)
+
+<span class="cm"># Simpan metadata versi</span>
+version_info = {
+    <span class="str">'version'</span>: <span class="num">1</span>,
+    <span class="str">'timestamp'</span>: datetime.datetime.<span class="fn">now</span>().<span class="fn">isoformat</span>(),
+    <span class="str">'row_count'</span>: <span class="fn">len</span>(df),
+    <span class="str">'columns'</span>: df.columns,
+}
+json.<span class="fn">dump</span>([version_info], <span class="fn">open</span>(<span class="str">'metadata/versions.json'</span>,<span class="str">'w'</span>))</code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Partitioning by month</strong> = query "WHERE month = '2024-06'" hanya baca 1 file, bukan 12.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 17 — BUILD SILVER LAYER
+         ========================================== -->
+    <section class="slide" data-slide="16">
+        <div class="accent-bar"></div>
+        <div class="bg-number">S</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 2</p>
+            <h2 class="reveal">Build Silver Layer</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># Read all bronze parquet files</span>
+bronze = pl.<span class="fn">read_parquet</span>(<span class="str">'bronze/*.parquet'</span>)
+
+<span class="cm"># Clean & validate</span>
+silver = (bronze
+    .<span class="fn">filter</span>(pl.<span class="fn">col</span>(<span class="str">'weight_kg'</span>) > <span class="num">0</span>)
+    .<span class="fn">filter</span>(pl.<span class="fn">col</span>(<span class="str">'cost'</span>) > <span class="num">0</span>)
+    .<span class="fn">filter</span>(pl.<span class="fn">col</span>(<span class="str">'origin'</span>) != pl.<span class="fn">col</span>(<span class="str">'destination'</span>))
+    .<span class="fn">with_columns</span>([
+        (pl.<span class="fn">col</span>(<span class="str">'cost'</span>) / pl.<span class="fn">col</span>(<span class="str">'weight_kg'</span>))
+            .<span class="fn">round</span>(<span class="num">2</span>).<span class="fn">alias</span>(<span class="str">'cost_per_kg'</span>),
+        (pl.<span class="fn">col</span>(<span class="str">'actual_days'</span>) &lt;= pl.<span class="fn">col</span>(<span class="str">'sla_days'</span>))
+            .<span class="fn">alias</span>(<span class="str">'sla_met'</span>),
+    ])
+    .<span class="fn">unique</span>(subset=[<span class="str">'order_id'</span>])
+)
+
+silver.<span class="fn">write_parquet</span>(<span class="str">'silver/shipments_clean.parquet'</span>)
+<span class="fn">print</span>(f<span class="str">'Bronze: {len(bronze)} → Silver: {len(silver)}'</span>)</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 18 — TIME TRAVEL SIMULATION
+         ========================================== -->
+    <section class="slide" data-slide="17">
+        <div class="accent-bar"></div>
+        <div class="bg-number">TT</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 3</p>
+            <h2 class="reveal">Time Travel Simulation</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># Simulasi multiple versions (snapshot per write)</span>
+versions = json.<span class="fn">load</span>(<span class="fn">open</span>(<span class="str">'metadata/versions.json'</span>))
+
+<span class="cm"># Version 2: tambah data baru (append)</span>
+new_rows = [{<span class="str">'order_id'</span>: <span class="str">f'ORD-{50000+i:06d}'</span>,
+  <span class="str">'kota'</span>: random.<span class="fn">choice</span>([<span class="str">'Jakarta'</span>,<span class="str">'Surabaya'</span>]),
+  <span class="str">'tarif'</span>: random.<span class="fn">randint</span>(<span class="num">10000</span>,<span class="num">90000</span>)}
+  <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(<span class="num">5000</span>)]
+df_new = pl.<span class="fn">DataFrame</span>(new_rows)
+df_new.<span class="fn">write_parquet</span>(<span class="str">'bronze/shipments_2024-13_patch.parquet'</span>)
+
+versions.<span class="fn">append</span>({
+    <span class="str">'version'</span>: <span class="num">2</span>, <span class="str">'timestamp'</span>: datetime.datetime.<span class="fn">now</span>().<span class="fn">isoformat</span>(),
+    <span class="str">'row_count'</span>: <span class="num">55000</span>, <span class="str">'action'</span>: <span class="str">'append 5000 rows'</span>
+})
+json.<span class="fn">dump</span>(versions, <span class="fn">open</span>(<span class="str">'metadata/versions.json'</span>,<span class="str">'w'</span>))
+
+<span class="cm"># Read old snapshot (version 1)</span>
+v1 = [v <span class="kw">for</span> v <span class="kw">in</span> versions <span class="kw">if</span> v[<span class="str">'version'</span>] == <span class="num">1</span>][<span class="num">0</span>]
+<span class="fn">print</span>(f<span class="str">"Version 1 had {v1['row_count']} rows at {v1['timestamp']}"</span>)</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 19 — SCHEMA EVOLUTION SIMULATION
+         ========================================== -->
+    <section class="slide" data-slide="18">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 4</p>
+            <h2 class="reveal">Schema Evolution Simulation</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># Evolusi: tambah kolom tax tanpa rewrite data lama</span>
+silver = pl.<span class="fn">read_parquet</span>(<span class="str">'silver/shipments_clean.parquet'</span>)
+
+<span class="cm"># Schema v2: tambah kolom tax (11%)</span>
+silver_v2 = silver.<span class="fn">with_columns</span>([
+    (pl.<span class="fn">col</span>(<span class="str">'cost'</span>) * <span class="num">0.11</span>).<span class="fn">round</span>(<span class="num">0</span>).<span class="fn">cast</span>(pl.Int64).<span class="fn">alias</span>(<span class="str">'tax'</span>),
+    (pl.<span class="fn">col</span>(<span class="str">'cost'</span>) * <span class="num">1.11</span>).<span class="fn">round</span>(<span class="num">0</span>).<span class="fn">cast</span>(pl.Int64).<span class="fn">alias</span>(<span class="str">'total_with_tax'</span>),
+])
+silver_v2.<span class="fn">write_parquet</span>(<span class="str">'silver/shipments_clean_v2.parquet'</span>)
+
+<span class="cm"># Backward compatible: data v1 tetap bisa dibaca</span>
+old_data = pl.<span class="fn">read_parquet</span>(<span class="str">'silver/shipments_clean.parquet'</span>)
+<span class="fn">print</span>(f<span class="str">"Old schema: {old_data.columns}"</span>)
+<span class="fn">print</span>(f<span class="str">"New schema: {silver_v2.columns}"</span>)
+
+<span class="cm"># Update schema metadata</span>
+schema_info = {<span class="str">'version'</span>: <span class="num">2</span>, <span class="str">'columns'</span>: silver_v2.columns,
+               <span class="str">'added'</span>: [<span class="str">'tax'</span>, <span class="str">'total_with_tax'</span>]}
+json.<span class="fn">dump</span>(schema_info, <span class="fn">open</span>(<span class="str">'metadata/schema.json'</span>,<span class="str">'w'</span>))</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 20 — BUILD GOLD LAYER
+         ========================================== -->
+    <section class="slide" data-slide="19">
+        <div class="accent-bar"></div>
+        <div class="bg-number">G</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 5</p>
+            <h2 class="reveal">Build Gold Layer — Aggregated Marts</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># Gold Mart 1: Daily Revenue</span>
+silver = pl.<span class="fn">read_parquet</span>(<span class="str">'silver/shipments_clean_v2.parquet'</span>)
+
+daily_revenue = (silver
+    .<span class="fn">group_by</span>(<span class="str">'ship_date'</span>)
+    .<span class="fn">agg</span>([
+        pl.<span class="fn">col</span>(<span class="str">'cost'</span>).<span class="fn">sum</span>().<span class="fn">alias</span>(<span class="str">'total_revenue'</span>),
+        pl.<span class="fn">col</span>(<span class="str">'order_id'</span>).<span class="fn">count</span>().<span class="fn">alias</span>(<span class="str">'order_count'</span>),
+        pl.<span class="fn">col</span>(<span class="str">'cost'</span>).<span class="fn">mean</span>().<span class="fn">round</span>(<span class="num">0</span>).<span class="fn">alias</span>(<span class="str">'avg_order_value'</span>),
+    ])
+    .<span class="fn">sort</span>(<span class="str">'ship_date'</span>)
+)
+daily_revenue.<span class="fn">write_parquet</span>(<span class="str">'gold/daily_revenue.parquet'</span>)
+
+<span class="cm"># Gold Mart 2: SLA Compliance per Route</span>
+sla_report = (silver
+    .<span class="fn">group_by</span>([<span class="str">'origin'</span>, <span class="str">'destination'</span>])
+    .<span class="fn">agg</span>([
+        pl.<span class="fn">col</span>(<span class="str">'sla_met'</span>).<span class="fn">mean</span>().<span class="fn">round</span>(<span class="num">3</span>).<span class="fn">alias</span>(<span class="str">'sla_rate'</span>),
+        pl.<span class="fn">col</span>(<span class="str">'order_id'</span>).<span class="fn">count</span>().<span class="fn">alias</span>(<span class="str">'total_orders'</span>),
+    ])
+)
+sla_report.<span class="fn">write_parquet</span>(<span class="str">'gold/sla_compliance.parquet'</span>)</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 21 — QUERY GOLD WITH DUCKDB
+         ========================================== -->
+    <section class="slide" data-slide="20">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 5b</p>
+            <h2 class="reveal">Query Gold Layer dengan DuckDB</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># DuckDB langsung query Parquet tanpa import!</span>
+con = duckdb.<span class="fn">connect</span>()
+
+<span class="cm"># Top 10 hari revenue tertinggi</span>
+con.<span class="fn">sql</span>(<span class="str">"""
+    SELECT ship_date, total_revenue, order_count, avg_order_value
+    FROM 'gold/daily_revenue.parquet'
+    ORDER BY total_revenue DESC
+    LIMIT 10
+"""</span>).<span class="fn">show</span>()
+
+<span class="cm"># Rute dengan SLA terburuk</span>
+con.<span class="fn">sql</span>(<span class="str">"""
+    SELECT origin, destination, sla_rate, total_orders
+    FROM 'gold/sla_compliance.parquet'
+    WHERE total_orders > 100
+    ORDER BY sla_rate ASC
+    LIMIT 5
+"""</span>).<span class="fn">show</span>()</code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>DuckDB + Parquet</strong> = query analitik tanpa database server. Sempurna untuk Lakehouse lokal.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 22 — DATA QUALITY CHECKS
+         ========================================== -->
+    <section class="slide" data-slide="21">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 6</p>
+            <h2 class="reveal">Data Quality Checks</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># Automated quality checks — simpan ke metadata</span>
+silver = pl.<span class="fn">read_parquet</span>(<span class="str">'silver/shipments_clean_v2.parquet'</span>)
+
+checks = {
+    <span class="str">'total_rows'</span>: <span class="fn">len</span>(silver),
+    <span class="str">'null_counts'</span>: {col: silver[col].<span class="fn">null_count</span>() <span class="kw">for</span> col <span class="kw">in</span> silver.columns},
+    <span class="str">'unique_orders'</span>: silver[<span class="str">'order_id'</span>].<span class="fn">n_unique</span>(),
+    <span class="str">'duplicate_check'</span>: <span class="fn">len</span>(silver) == silver[<span class="str">'order_id'</span>].<span class="fn">n_unique</span>(),
+    <span class="str">'min_cost'</span>: silver[<span class="str">'cost'</span>].<span class="fn">min</span>(),
+    <span class="str">'max_cost'</span>: silver[<span class="str">'cost'</span>].<span class="fn">max</span>(),
+    <span class="str">'sla_rate_overall'</span>: <span class="fn">round</span>(silver[<span class="str">'sla_met'</span>].<span class="fn">mean</span>(), <span class="num">3</span>),
+}
+json.<span class="fn">dump</span>(checks, <span class="fn">open</span>(<span class="str">'metadata/quality.json'</span>,<span class="str">'w'</span>), default=<span class="fn">str</span>)
+
+<span class="kw">for</span> k, v <span class="kw">in</span> checks.<span class="fn">items</span>():
+    <span class="fn">print</span>(f<span class="str">"  {k}: {v}"</span>)</code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Production tip:</strong> jalankan quality checks setelah setiap ETL step. Gagal? Jangan lanjut ke layer berikutnya!</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 23 — SECTION: TIPS & KESALAHAN UMUM
+         ========================================== -->
+    <section class="slide section-divider" data-slide="22">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 4</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Tips &<br>Kesalahan Umum</h2>
+            <div class="section-num">04</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 24 — TIPS
+         ========================================== -->
+    <section class="slide" data-slide="23">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Tips</p>
+            <h2 class="reveal">Tips Membangun Lakehouse</h2>
+            <ul class="content-list reveal">
+                <li><strong>Selalu mulai dari Bronze:</strong> simpan data mentah tanpa transformasi. Jangan pernah buang raw data.</li>
+                <li><strong>Partition dengan bijak:</strong> partition by date/month untuk time-series. Jangan over-partition (terlalu banyak file kecil).</li>
+                <li><strong>Schema versioning:</strong> simpan schema di metadata. Track setiap perubahan seperti git untuk data.</li>
+                <li><strong>Idempotent pipelines:</strong> jalankan ulang pipeline tanpa duplikasi data. Gunakan UPSERT/MERGE.</li>
+                <li><strong>Quality gates:</strong> validasi di setiap layer. Bronze-to-Silver paling kritis.</li>
+                <li><strong>Gunakan Parquet, bukan CSV:</strong> kompresi 10x lebih kecil, columnar pruning, tipe data preserved.</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 25 — KESALAHAN UMUM
+         ========================================== -->
+    <section class="slide" data-slide="24">
+        <div class="accent-bar"></div>
+        <div class="bg-number">!</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Kesalahan Umum</p>
+            <h2 class="reveal">Kesalahan Umum & Solusinya</h2>
+            <div class="comparison reveal">
+                <div class="comparison-col alt">
+                    <h3>Kesalahan</h3>
+                    <ul>
+                        <li>Langsung transform di Bronze</li>
+                        <li>Tidak ada metadata/versioning</li>
+                        <li>Partition by high-cardinality column</li>
+                        <li>Skip quality checks</li>
+                        <li>Gold layer terlalu banyak kolom</li>
+                        <li>Campur raw + cleaned di satu folder</li>
+                    </ul>
+                </div>
+                <div class="comparison-col">
+                    <h3>Solusi</h3>
+                    <ul>
+                        <li>Bronze = raw only, transform di Silver</li>
+                        <li>Selalu track version + schema di metadata/</li>
+                        <li>Partition by month/day, bukan by user_id</li>
+                        <li>Quality gate wajib sebelum naik layer</li>
+                        <li>Gold = minimal kolom, spesifik per use case</li>
+                        <li>Pisahkan folder: bronze/, silver/, gold/</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 26 — RINGKASAN
+         ========================================== -->
+    <section class="slide" data-slide="25">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Ringkasan</p>
+            <h2 class="reveal">Ringkasan Pertemuan 14</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>Lakehouse = Lake + Warehouse</h4>
+                    <p>Murah seperti data lake, rapi seperti warehouse. Open table formats di atas object storage.</p>
+                </div>
+                <div class="info-card">
+                    <h4>ACID + Time Travel</h4>
+                    <p>No partial writes, query data versi lama, rollback kapan saja. Data engineering yang aman.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Schema Evolution</h4>
+                    <p>Tambah/ubah kolom tanpa rewrite data. Backward compatible. Zero downtime migration.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Medallion: B → S → G</h4>
+                    <p>Bronze (raw) → Silver (clean) → Gold (marts). Partitioning + quality gates di setiap layer.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Iceberg vs Delta vs Hudi</h4>
+                    <p>Iceberg paling populer (engine-agnostic). Delta kuat di Databricks. Hudi untuk streaming/upsert.</p>
+                </div>
+                <div class="info-card">
+                    <h4>DuckDB + Parquet</h4>
+                    <p>Query langsung di atas Parquet tanpa server. Perfect untuk lakehouse lokal dan pembelajaran.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 27 — SECTION: STUDI KASUS & TUGAS
+         ========================================== -->
+    <section class="slide section-divider" data-slide="26">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 5</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Studi Kasus<br>& Tugas</h2>
+            <div class="section-num">05</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 28 — TUGAS: DATACO SUPPLY CHAIN
+         ========================================== -->
+    <section class="slide" data-slide="27">
+        <div class="accent-bar"></div>
+        <div class="bg-number">T</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Tugas</p>
+            <h2 class="reveal">Tugas: DataCo Supply Chain Lakehouse</h2>
+            <p class="reveal" style="max-width: 650px; margin-bottom: var(--content-gap);">Bangun <strong>Data Lakehouse lengkap</strong> menggunakan dataset DataCo Supply Chain dari Kaggle (180K+ orders, 50+ kolom).</p>
+            <div class="steps reveal">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-title">Bronze Layer</div>
+                    <div class="step-desc">Download CSV dari Kaggle. Convert ke Parquet partitioned by order month. Simpan metadata versi.</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-title">Silver Layer</div>
+                    <div class="step-desc">Clean: handle nulls, validate types, deduplicate, tambah derived columns (profit_ratio, delivery_delay).</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div class="step-title">Gold Layer</div>
+                    <div class="step-desc">Buat 3 marts: monthly_sales, product_performance, late_delivery_analysis. Query dengan DuckDB.</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">4</div>
+                    <div class="step-title">Lakehouse Features</div>
+                    <div class="step-desc">Implementasi time travel (min. 2 versi), schema evolution (tambah kolom), data quality checks.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 29 — DETAIL TUGAS
+         ========================================== -->
+    <section class="slide" data-slide="28">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Tugas</p>
+            <h2 class="reveal">Detail & Penilaian</h2>
+            <div class="two-col reveal">
+                <div>
+                    <h3 style="font-size: clamp(0.85rem, 1.3vw, 1.1rem); margin-bottom: var(--element-gap);">Dataset</h3>
+                    <ul class="content-list">
+                        <li><strong>Nama:</strong> DataCo Supply Chain Dataset</li>
+                        <li><strong>Kaggle:</strong> kaggle.com/datasets/shashwatwork/dataco-smart-supply-chain-for-big-data-analysis</li>
+                        <li><strong>Size:</strong> 180K+ orders, 50+ kolom</li>
+                        <li><strong>Kolom utama:</strong> order_date, product, sales, profit, shipping_mode, delivery_status</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 style="font-size: clamp(0.85rem, 1.3vw, 1.1rem); margin-bottom: var(--element-gap);">Penilaian</h3>
+                    <ul class="content-list">
+                        <li><strong>Bronze Layer (20%):</strong> Partitioned Parquet + metadata</li>
+                        <li><strong>Silver Layer (25%):</strong> Cleaning + derived columns</li>
+                        <li><strong>Gold Layer (25%):</strong> 3 aggregate marts + DuckDB query</li>
+                        <li><strong>Lakehouse Features (20%):</strong> Time travel + schema evolution</li>
+                        <li><strong>Quality Checks (10%):</strong> Automated data validation</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 30 — REFERENSI
+         ========================================== -->
+    <section class="slide" data-slide="29">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Referensi</p>
+            <h2 class="reveal">Bahan Belajar Mandiri</h2>
+            <ul class="content-list reveal">
+                <li><strong>Lakehouse Paper:</strong> Armbrust et al. — "Lakehouse: A New Generation of Open Platforms" (CIDR 2021)</li>
+                <li><strong>Apache Iceberg:</strong> iceberg.apache.org</li>
+                <li><strong>Delta Lake:</strong> delta.io</li>
+                <li><strong>Medallion Architecture:</strong> databricks.com/glossary/medallion-architecture</li>
+                <li><strong>DuckDB + Iceberg:</strong> duckdb.org/docs/extensions/iceberg</li>
+                <li><strong>Buku:</strong> Joe Reis & Matt Housley — Fundamentals of Data Engineering (O'Reilly)</li>
+                <li><strong>DataCo Dataset:</strong> kaggle.com/datasets/shashwatwork/dataco-smart-supply-chain-for-big-data-analysis</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ===========================================
+         JAVASCRIPT: Presentation Controller
+         =========================================== -->
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.isScrolling = false;
+                this.setupIntersectionObserver();
+                this.setupKeyboardNav();
+                this.setupTouchNav();
+                this.setupWheelNav();
+                this.setupProgressBar();
+                this.setupNavDots();
+            }
+
+            setupIntersectionObserver() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            const idx = Array.from(this.slides).indexOf(entry.target);
+                            if (idx !== -1) {
+                                this.currentSlide = idx;
+                                this.updateProgressBar();
+                                this.updateNavDots();
+                            }
+                        }
+                    });
+                }, { threshold: 0.5 });
+                this.slides.forEach(slide => observer.observe(slide));
+            }
+
+            goToSlide(index) {
+                if (index >= 0 && index < this.slides.length) {
+                    this.slides[index].scrollIntoView({ behavior: 'smooth' });
+                    this.currentSlide = index;
+                    this.updateProgressBar();
+                    this.updateNavDots();
+                }
+            }
+
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.target.getAttribute && e.target.getAttribute('contenteditable') === 'true') return;
+                    switch(e.key) {
+                        case 'ArrowDown': case 'ArrowRight': case ' ': case 'PageDown':
+                            e.preventDefault(); this.goToSlide(this.currentSlide + 1); break;
+                        case 'ArrowUp': case 'ArrowLeft': case 'PageUp':
+                            e.preventDefault(); this.goToSlide(this.currentSlide - 1); break;
+                        case 'Home': e.preventDefault(); this.goToSlide(0); break;
+                        case 'End': e.preventDefault(); this.goToSlide(this.slides.length - 1); break;
+                    }
+                });
+            }
+
+            setupTouchNav() {
+                let startY = 0;
+                document.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; }, { passive: true });
+                document.addEventListener('touchend', (e) => {
+                    const diff = startY - e.changedTouches[0].clientY;
+                    if (Math.abs(diff) > 50) {
+                        diff > 0 ? this.goToSlide(this.currentSlide + 1) : this.goToSlide(this.currentSlide - 1);
+                    }
+                }, { passive: true });
+            }
+
+            setupWheelNav() {
+                let timeout;
+                document.addEventListener('wheel', (e) => {
+                    if (this.isScrolling) return;
+                    this.isScrolling = true;
+                    clearTimeout(timeout);
+                    if (e.deltaY > 30) this.goToSlide(this.currentSlide + 1);
+                    else if (e.deltaY < -30) this.goToSlide(this.currentSlide - 1);
+                    timeout = setTimeout(() => { this.isScrolling = false; }, 800);
+                }, { passive: true });
+            }
+
+            setupProgressBar() {
+                this.progressBar = document.getElementById('progressBar');
+                this.updateProgressBar();
+            }
+
+            updateProgressBar() {
+                const pct = ((this.currentSlide + 1) / this.slides.length) * 100;
+                if (this.progressBar) this.progressBar.style.width = pct + '%';
+            }
+
+            setupNavDots() {
+                const container = document.getElementById('navDots');
+                if (!container) return;
+                this.slides.forEach((_, i) => {
+                    const dot = document.createElement('button');
+                    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+                    dot.addEventListener('click', () => this.goToSlide(i));
+                    dot.setAttribute('aria-label', `Slide ${i + 1}`);
+                    container.appendChild(dot);
+                });
+                this.dots = container.querySelectorAll('.nav-dot');
+            }
+
+            updateNavDots() {
+                if (!this.dots) return;
+                this.dots.forEach((dot, i) => {
+                    dot.classList.toggle('active', i === this.currentSlide);
+                });
+            }
+        }
+
+        /* ===========================================
+           INLINE EDITOR
+           =========================================== */
+        class InlineEditor {
+            constructor() {
+                this.isActive = false;
+                this.storageKey = 'slides-p14-edits';
+                this.loadEdits();
+            }
+
+            toggleEditMode() {
+                this.isActive = !this.isActive;
+                document.body.classList.toggle('editing-active', this.isActive);
+                document.getElementById('editToggle').classList.toggle('active', this.isActive);
+                const editables = document.querySelectorAll('h1,h2,h3,h4,p,li,span,.step-desc,.step-title,.tag');
+                editables.forEach(el => {
+                    if (el.closest('.nav-dots') || el.closest('.edit-toggle')) return;
+                    el.contentEditable = this.isActive ? 'true' : 'false';
+                });
+                if (this.isActive) {
+                    document.addEventListener('input', this._saveHandler = () => this.saveEdits());
+                } else {
+                    document.removeEventListener('input', this._saveHandler);
+                    this.saveEdits();
+                }
+            }
+
+            saveEdits() {
+                const data = {};
+                document.querySelectorAll('.slide').forEach((slide, i) => {
+                    data[i] = slide.innerHTML;
+                });
+                try { localStorage.setItem(this.storageKey, JSON.stringify(data)); } catch(e) {}
+                const notice = document.getElementById('saveNotice');
+                notice.classList.add('show');
+                setTimeout(() => notice.classList.remove('show'), 1200);
+            }
+
+            loadEdits() {
+                try {
+                    const data = JSON.parse(localStorage.getItem(this.storageKey));
+                    if (!data) return;
+                    document.querySelectorAll('.slide').forEach((slide, i) => {
+                        if (data[i]) slide.innerHTML = data[i];
+                    });
+                } catch(e) {}
+            }
+        }
+
+        /* Init */
+        const presentation = new SlidePresentation();
+        const editor = new InlineEditor();
+
+        /* Edit hotzone + toggle */
+        const hotzone = document.getElementById('editHotzone');
+        const editToggle = document.getElementById('editToggle');
+        let hideTimeout = null;
+        hotzone.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); editToggle.classList.add('show'); });
+        hotzone.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+        editToggle.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); });
+        editToggle.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+        editToggle.addEventListener('click', () => editor.toggleEditMode());
+        hotzone.addEventListener('click', () => editor.toggleEditMode());
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) editor.toggleEditMode();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1586 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pertemuan 10 — Google BigQuery: SQL at Scale di Cloud</title>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;800&family=Nunito:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES — SWISS MODERN THEME
+           =========================================== */
+        :root {
+            --bg-white: #ffffff;
+            --bg-light: #f8f8f8;
+            --text-primary: #0a0a0a;
+            --text-secondary: #555;
+            --text-muted: #888;
+            --accent-red: #ff3300;
+            --accent-red-light: rgba(255, 51, 0, 0.08);
+            --accent-red-glow: rgba(255, 51, 0, 0.15);
+            --grid-color: rgba(0,0,0,0.05);
+            --border-color: rgba(0,0,0,0.1);
+            --font-display: 'Archivo', sans-serif;
+            --font-body: 'Nunito', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration-normal: 0.6s;
+
+            --title-size: clamp(2.2rem, 6vw, 5rem);
+            --h2-size: clamp(1.8rem, 4.5vw, 3.2rem);
+            --h3-size: clamp(1.3rem, 3vw, 2.2rem);
+            --body-size: clamp(1rem, 2vw, 1.5rem);
+            --small-size: clamp(0.85rem, 1.4vw, 1.15rem);
+            --slide-padding: clamp(1rem, 3vw, 2.5rem);
+            --content-gap: clamp(0.5rem, 1.5vw, 1.5rem);
+            --element-gap: clamp(0.25rem, 0.8vw, 0.75rem);
+        }
+
+        /* ===========================================
+           BASE RESET
+           =========================================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ===========================================
+           VIEWPORT FITTING — MANDATORY BASE STYLES
+           =========================================== */
+        html, body { height: 100%; overflow-x: hidden; }
+        html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+
+        .slide {
+            width: 100vw; height: 100vh; height: 100dvh;
+            overflow: hidden; scroll-snap-align: start;
+            display: flex; flex-direction: column; position: relative;
+        }
+        .slide-content {
+            flex: 1; display: flex; flex-direction: column; justify-content: center;
+            max-height: 100%; overflow: hidden;
+            padding: clamp(1.5rem, 3vh, 3rem) var(--slide-padding);
+            padding-left: clamp(2.5rem, 5vw, 5rem);
+            padding-right: clamp(2rem, 4vw, 4rem);
+        }
+        .card, .container, .content-box {
+            max-width: min(95vw, 1200px); max-height: min(90vh, 800px);
+        }
+        .feature-list, .bullet-list { gap: clamp(0.4rem, 1vh, 1rem); }
+        .feature-list li, .bullet-list li { font-size: var(--body-size); line-height: 1.4; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+            gap: clamp(0.5rem, 1.5vw, 1rem);
+        }
+        img, .image-container { max-width: 100%; max-height: min(50vh, 400px); object-fit: contain; }
+
+        @media (max-height: 700px) {
+            :root {
+                --slide-padding: clamp(0.75rem, 2vw, 1.5rem);
+                --content-gap: clamp(0.4rem, 1vw, 0.8rem);
+                --title-size: clamp(1.6rem, 5vw, 3rem);
+                --h2-size: clamp(1.3rem, 3.5vw, 2.2rem);
+                --body-size: clamp(0.85rem, 1.6vw, 1.2rem);
+            }
+        }
+        @media (max-height: 600px) {
+            :root {
+                --slide-padding: clamp(0.5rem, 1.5vw, 1rem);
+                --content-gap: clamp(0.3rem, 0.8vw, 0.6rem);
+                --title-size: clamp(1.4rem, 4.5vw, 2.5rem);
+                --body-size: clamp(0.8rem, 1.4vw, 1.1rem);
+            }
+            .nav-dots, .keyboard-hint, .decorative { display: none; }
+        }
+        @media (max-height: 500px) {
+            :root {
+                --slide-padding: clamp(0.4rem, 1.5vw, 0.8rem);
+                --title-size: clamp(1.2rem, 4vw, 2rem);
+                --h2-size: clamp(1rem, 3vw, 1.5rem);
+                --body-size: clamp(0.75rem, 1.2vw, 1rem);
+            }
+        }
+        @media (max-width: 600px) {
+            :root { --title-size: clamp(1.5rem, 8vw, 3rem); }
+            .grid { grid-template-columns: 1fr; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.2s !important;
+            }
+            html { scroll-behavior: auto; }
+        }
+
+        /* ===========================================
+           SWISS MODERN — GRID BACKGROUND
+           =========================================== */
+        .slide::before {
+            content: '';
+            position: absolute; inset: 0;
+            background-image:
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: clamp(30px, 5vw, 60px) clamp(30px, 5vw, 60px);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .slide > * { position: relative; z-index: 1; }
+
+        /* ===========================================
+           ACCENT BAR (left edge)
+           =========================================== */
+        .accent-bar {
+            position: absolute; left: 0; top: 0; bottom: 0;
+            width: clamp(4px, 0.5vw, 6px);
+            background: var(--accent-red);
+            z-index: 2;
+        }
+
+        /* ===========================================
+           TYPOGRAPHY
+           =========================================== */
+        body { font-family: var(--font-body); color: var(--text-primary); background: var(--bg-white); }
+
+        h1, h2, h3 { font-family: var(--font-display); font-weight: 800; line-height: 1.1; }
+        h1 { font-size: var(--title-size); }
+        h2 { font-size: var(--h2-size); margin-bottom: var(--content-gap); }
+        h3 { font-size: var(--h3-size); }
+        p, li { font-size: var(--body-size); line-height: 1.6; color: var(--text-secondary); }
+        .highlight { color: var(--accent-red); }
+        .tag-label {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(0.8rem, 1.3vw, 1.1rem);
+            color: var(--accent-red); text-transform: uppercase; letter-spacing: 0.2em;
+            margin-bottom: var(--element-gap);
+        }
+
+        /* ===========================================
+           LARGE BACKGROUND NUMBER
+           =========================================== */
+        .bg-number {
+            position: absolute;
+            right: clamp(1rem, 4vw, 4rem);
+            top: clamp(0.5rem, 2vh, 2rem);
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(5rem, 15vw, 12rem);
+            color: rgba(0,0,0,0.03);
+            line-height: 1; z-index: 0; pointer-events: none;
+        }
+
+        /* ===========================================
+           SECTION DIVIDER SLIDES
+           =========================================== */
+        .slide.section-divider {
+            background: var(--text-primary);
+        }
+        .slide.section-divider::before {
+            background-image:
+                linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+        }
+        .slide.section-divider .accent-bar { background: var(--accent-red); }
+        .slide.section-divider h2 { color: #fff; }
+        .slide.section-divider .section-num {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(4rem, 12vw, 10rem);
+            color: rgba(255,255,255,0.06);
+            position: absolute;
+            right: clamp(2rem, 6vw, 6rem);
+            bottom: clamp(1rem, 4vh, 4rem);
+        }
+        .slide.section-divider .tag-label { color: var(--accent-red); }
+
+        /* ===========================================
+           TITLE SLIDE
+           =========================================== */
+        .slide.title-slide { background: var(--bg-white); }
+        .title-meta {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+            color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em;
+            margin-bottom: clamp(0.5rem, 1vh, 1rem);
+        }
+        .title-slide h1 {
+            font-size: clamp(2.5rem, 6.5vw, 5.5rem);
+            margin-bottom: clamp(0.5rem, 1.5vh, 1.5rem);
+        }
+        .title-desc {
+            font-size: clamp(1.1rem, 2vw, 1.5rem);
+            color: var(--text-secondary);
+            max-width: 700px; line-height: 1.6;
+            margin-bottom: clamp(0.75rem, 2vh, 1.5rem);
+        }
+        .tags {
+            display: flex; gap: clamp(8px, 1vw, 14px); flex-wrap: wrap;
+        }
+        .tag {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.7rem, 1.1vw, 0.95rem);
+            text-transform: uppercase; letter-spacing: 0.08em;
+            padding: clamp(4px, 0.6vh, 8px) clamp(10px, 1.2vw, 18px);
+            border: 2px solid var(--text-primary);
+            color: var(--text-primary);
+        }
+        .tag.active { background: var(--text-primary); color: var(--bg-white); }
+
+        /* ===========================================
+           CONTENT COMPONENTS
+           =========================================== */
+        /* Comparison columns */
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: clamp(1rem, 3vw, 3rem);
+            margin-top: var(--content-gap);
+        }
+        @media (max-width: 600px) { .comparison { grid-template-columns: 1fr; } }
+        .comparison-col h3 {
+            font-size: clamp(1.1rem, 1.8vw, 1.5rem);
+            margin-bottom: var(--element-gap);
+            padding-bottom: var(--element-gap);
+            border-bottom: 3px solid var(--accent-red);
+        }
+        .comparison-col.alt h3 { border-bottom-color: var(--text-primary); }
+        .comparison-col ul { list-style: none; }
+        .comparison-col li {
+            font-size: clamp(0.9rem, 1.4vw, 1.2rem);
+            padding: clamp(3px, 0.4vh, 6px) 0;
+            padding-left: 1.2em;
+            position: relative;
+        }
+        .comparison-col li::before {
+            content: '→';
+            position: absolute; left: 0;
+            color: var(--accent-red);
+            font-weight: 700;
+        }
+
+        /* Steps */
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+            gap: clamp(0.5rem, 1.5vw, 1.5rem);
+            margin-top: var(--content-gap);
+        }
+        .step {
+            border-left: 3px solid var(--accent-red);
+            padding-left: clamp(0.5rem, 1vw, 1rem);
+        }
+        .step-num {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(1.5rem, 2.5vw, 2.2rem);
+            color: var(--accent-red); line-height: 1;
+        }
+        .step-title {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.9rem, 1.4vw, 1.2rem);
+            color: var(--text-primary);
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin: clamp(2px, 0.3vh, 4px) 0;
+        }
+        .step-desc {
+            font-size: clamp(0.85rem, 1.3vw, 1.1rem);
+            color: var(--text-secondary);
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: #1a1a1a;
+            border-radius: 4px;
+            padding: clamp(0.5rem, 1.5vw, 1.5rem);
+            margin-top: var(--element-gap);
+            overflow-x: auto;
+            max-height: min(45vh, 350px);
+        }
+        .code-block code {
+            font-family: var(--font-mono);
+            font-size: clamp(0.85rem, 1.4vw, 1.15rem);
+            color: #e0e0e0; line-height: 1.5;
+            white-space: pre;
+        }
+        .code-block .kw { color: #ff7b72; }
+        .code-block .fn { color: #d2a8ff; }
+        .code-block .str { color: #a5d6ff; }
+        .code-block .cm { color: #8b949e; }
+        .code-block .num { color: #79c0ff; }
+
+        /* Info cards */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+            gap: clamp(0.5rem, 1vw, 1rem);
+            margin-top: var(--content-gap);
+        }
+        .info-card {
+            padding: clamp(0.5rem, 1.5vw, 1.5rem);
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+        .info-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0;
+            height: 3px; background: var(--accent-red);
+        }
+        .info-card h4 {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(0.95rem, 1.5vw, 1.25rem);
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin-bottom: clamp(2px, 0.5vh, 6px);
+        }
+        .info-card p { font-size: clamp(0.9rem, 1.3vw, 1.15rem); }
+
+        /* Benchmark bars */
+        .bench-row {
+            display: flex; align-items: center;
+            gap: clamp(0.5rem, 1vw, 1rem);
+            margin-bottom: clamp(0.3rem, 0.5vh, 0.5rem);
+        }
+        .bench-label {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+            min-width: clamp(70px, 10vw, 120px);
+            text-align: right;
+        }
+        .bench-bar {
+            height: clamp(28px, 4vh, 40px);
+            background: var(--accent-red);
+            border-radius: 2px;
+            display: flex; align-items: center;
+            padding-left: clamp(6px, 0.8vw, 12px);
+            transition: width 1s var(--ease-out-expo);
+        }
+        .bench-bar.alt { background: var(--text-primary); }
+        .bench-bar span {
+            font-family: var(--font-mono);
+            font-size: clamp(0.75rem, 1.1vw, 1rem);
+            color: #fff; white-space: nowrap;
+            font-weight: 500;
+        }
+        .bench-speedup {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(1rem, 1.5vw, 1.3rem);
+            color: var(--accent-red);
+        }
+
+        /* Bullet list */
+        .content-list {
+            list-style: none;
+            margin-top: var(--element-gap);
+        }
+        .content-list li {
+            padding: clamp(3px, 0.5vh, 6px) 0;
+            padding-left: 1.5em; position: relative;
+            font-size: var(--body-size);
+        }
+        .content-list li::before {
+            content: ''; position: absolute;
+            left: 0; top: clamp(10px, 1.2vh, 14px);
+            width: 8px; height: 3px;
+            background: var(--accent-red);
+        }
+
+        /* Tip/warning box */
+        .tip-box {
+            border-left: 4px solid var(--accent-red);
+            background: var(--accent-red-light);
+            padding: clamp(0.5rem, 1vw, 1rem);
+            margin-top: var(--element-gap);
+        }
+        .tip-box p { font-size: clamp(0.9rem, 1.4vw, 1.2rem); color: var(--text-primary); }
+        .tip-box strong { color: var(--accent-red); }
+
+        /* Table */
+        .data-table {
+            width: 100%; border-collapse: collapse;
+            margin-top: var(--element-gap);
+            font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+        }
+        .data-table th {
+            font-family: var(--font-display); font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            font-size: clamp(0.8rem, 1.2vw, 1.05rem);
+            text-align: left;
+            padding: clamp(6px, 0.8vh, 12px) clamp(8px, 1.2vw, 16px);
+            border-bottom: 2px solid var(--text-primary);
+            color: var(--text-primary);
+        }
+        .data-table td {
+            padding: clamp(5px, 0.7vh, 10px) clamp(8px, 1.2vw, 16px);
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+        .data-table td:first-child { font-weight: 600; color: var(--text-primary); }
+
+        /* Two column layout */
+        .two-col {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: clamp(1rem, 3vw, 3rem);
+            margin-top: var(--content-gap);
+        }
+        @media (max-width: 600px) { .two-col { grid-template-columns: 1fr; } }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal {
+            opacity: 0; transform: translateY(20px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .reveal-left {
+            opacity: 0; transform: translateX(-30px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .slide.visible .reveal,
+        .slide.visible .reveal-left {
+            opacity: 1; transform: translate(0);
+        }
+        .slide.visible .reveal:nth-child(1) { transition-delay: 0.05s; }
+        .slide.visible .reveal:nth-child(2) { transition-delay: 0.1s; }
+        .slide.visible .reveal:nth-child(3) { transition-delay: 0.15s; }
+        .slide.visible .reveal:nth-child(4) { transition-delay: 0.2s; }
+        .slide.visible .reveal:nth-child(5) { transition-delay: 0.25s; }
+        .slide.visible .reveal:nth-child(6) { transition-delay: 0.3s; }
+
+        /* ===========================================
+           PROGRESS BAR
+           =========================================== */
+        .progress-bar {
+            position: fixed; top: 0; left: 0;
+            height: 3px; background: var(--accent-red);
+            z-index: 9999; transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        /* ===========================================
+           NAV DOTS
+           =========================================== */
+        .nav-dots {
+            position: fixed; right: clamp(8px, 1vw, 16px);
+            top: 50%; transform: translateY(-50%);
+            display: flex; flex-direction: column;
+            gap: clamp(4px, 0.5vh, 8px); z-index: 9998;
+        }
+        .nav-dot {
+            width: clamp(6px, 0.5vw, 8px); height: clamp(6px, 0.5vw, 8px);
+            background: var(--border-color);
+            border-radius: 50%; cursor: pointer;
+            transition: all 0.3s ease; border: none; padding: 0;
+        }
+        .nav-dot.active {
+            background: var(--accent-red);
+            transform: scale(1.4);
+        }
+
+        /* ===========================================
+           EDIT MODE (opt-in)
+           =========================================== */
+        .edit-hotzone {
+            position: fixed; top: 0; left: 0;
+            width: 80px; height: 80px;
+            z-index: 10000; cursor: pointer;
+        }
+        .edit-toggle {
+            position: fixed; top: 16px; left: 16px;
+            width: 36px; height: 36px;
+            background: var(--text-primary); color: #fff;
+            border: none; border-radius: 4px;
+            font-size: 16px; cursor: pointer;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 10001;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+        .edit-toggle.active { background: var(--accent-red); }
+        .editing-active [contenteditable="true"] {
+            outline: 2px dashed var(--accent-red-glow);
+            outline-offset: 2px;
+            cursor: text;
+        }
+        .edit-save-notice {
+            position: fixed; bottom: 20px; left: 50%;
+            transform: translateX(-50%);
+            background: var(--text-primary); color: #fff;
+            padding: 8px 20px; border-radius: 4px;
+            font-family: var(--font-body); font-size: 13px;
+            opacity: 0; transition: opacity 0.3s;
+            z-index: 10002; pointer-events: none;
+        }
+        .edit-save-notice.show { opacity: 1; }
+    </style>
+</head>
+<body>
+    <!-- Progress bar -->
+    <div class="progress-bar" id="progressBar"></div>
+    <!-- Nav dots (generated by JS) -->
+    <nav class="nav-dots" id="navDots"></nav>
+    <!-- Edit mode -->
+    <div class="edit-hotzone" id="editHotzone"></div>
+    <button class="edit-toggle" id="editToggle" title="Edit mode (E)">&#9998;</button>
+    <div class="edit-save-notice" id="saveNotice">Tersimpan!</div>
+
+    <!-- ==========================================
+         SLIDE 1 — TITLE
+         ========================================== -->
+    <section class="slide title-slide" data-slide="0">
+        <div class="accent-bar"></div>
+        <div class="bg-number">10</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Pertemuan 10</p>
+            <h1 class="reveal">Google BigQuery:<br><span class="highlight">SQL at Scale di Cloud</span></h1>
+            <p class="title-desc reveal">1 miliar baris dalam 5 detik. 1 TB gratis/bulan. Tanpa server, tanpa CC.</p>
+            <div class="tags reveal">
+                <span class="tag active">BigQuery</span>
+                <span class="tag">Cloud</span>
+                <span class="tag">SQL</span>
+                <span class="tag">Serverless</span>
+                <span class="tag">Gratis</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 2 — SECTION: SETUP
+         ========================================== -->
+    <section class="slide section-divider" data-slide="1">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 1</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Setup BigQuery<br>(GRATIS)</h2>
+            <div class="section-num">01</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 3 — BUAT AKUN BIGQUERY SANDBOX
+         ========================================== -->
+    <section class="slide" data-slide="2">
+        <div class="accent-bar"></div>
+        <div class="bg-number">01</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Setup</p>
+            <h2 class="reveal">Buat Akun BigQuery Sandbox</h2>
+            <div class="steps reveal">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-title">Buka Console</div>
+                    <div class="step-desc">console.cloud.google.com/bigquery</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-title">Login Gmail</div>
+                    <div class="step-desc">Pakai akun Gmail biasa, tidak perlu akun khusus</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div class="step-title">Terima ToS</div>
+                    <div class="step-desc">Klik Accept Terms of Service</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">4</div>
+                    <div class="step-title">Buat Project</div>
+                    <div class="step-desc">Nama: "bigdata-kuliah"</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">5</div>
+                    <div class="step-title">SKIP Billing!</div>
+                    <div class="step-desc">Sandbox gratis: 1 TB/bulan + 200+ datasets</div>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Tidak perlu kartu kredit!</strong> BigQuery Sandbox sepenuhnya gratis untuk belajar.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 4 — BIGQUERY DARI GOOGLE COLAB
+         ========================================== -->
+    <section class="slide" data-slide="3">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Setup</p>
+            <h2 class="reveal">BigQuery dari Google Colab</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># Cell 1: Autentikasi</span>
+<span class="kw">from</span> google.colab <span class="kw">import</span> auth
+auth.<span class="fn">authenticate_user</span>()
+
+<span class="cm"># Cell 2: Setup Client</span>
+<span class="kw">from</span> google.cloud <span class="kw">import</span> bigquery
+PROJECT_ID = <span class="str">'bigdata-kuliah'</span>
+client = bigquery.<span class="fn">Client</span>(project=PROJECT_ID)
+
+<span class="cm"># Cell 3: Test Query</span>
+query = <span class="str">"""
+SELECT COUNT(*) AS total_trips
+FROM `bigquery-public-data.new_york_taxi_trips.tlc_yellow_trips_2022`
+"""</span>
+df = client.<span class="fn">query</span>(query).<span class="fn">to_dataframe</span>()
+<span class="fn">print</span>(df)</code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Login pop-up muncul otomatis.</strong> Klik Allow, lalu query langsung jalan!</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 5 — FREE TIER DETAILS
+         ========================================== -->
+    <section class="slide" data-slide="4">
+        <div class="accent-bar"></div>
+        <div class="bg-number">$0</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Gratis</p>
+            <h2 class="reveal">BigQuery Free Tier</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>1 TB Query/Bulan</h4>
+                    <p>Cukup untuk ratusan query besar. Reset setiap bulan.</p>
+                </div>
+                <div class="info-card">
+                    <h4>10 GB Storage</h4>
+                    <p>Simpan tabel sendiri, gratis 10 GB pertama.</p>
+                </div>
+                <div class="info-card">
+                    <h4>200+ Public Datasets</h4>
+                    <p>NYC Taxi, GitHub, Stack Overflow, Wikipedia, GA4, dan lainnya.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Tanpa CC</h4>
+                    <p>Sandbox mode: tidak perlu kartu kredit sama sekali.</p>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Tips hemat kuota:</strong> SELECT kolom spesifik (bukan *), WHERE filter tanggal, cek estimasi GB sebelum run.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 6 — SECTION: TEORI & KONSEP
+         ========================================== -->
+    <section class="slide section-divider" data-slide="5">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 2</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Teori &<br>Konsep</h2>
+            <div class="section-num">02</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 7 — TRADISIONAL VS CLOUD DW
+         ========================================== -->
+    <section class="slide" data-slide="6">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Perbandingan</p>
+            <h2 class="reveal">Tradisional vs Cloud Data Warehouse</h2>
+            <div class="comparison reveal">
+                <div class="comparison-col alt">
+                    <h3>DB Tradisional</h3>
+                    <ul>
+                        <li>CPU + Disk terikat (satu mesin)</li>
+                        <li>Beli/sewa server sendiri, mahal</li>
+                        <li>Butuh DBA untuk maintenance</li>
+                        <li>Bayar 24/7 meskipun idle</li>
+                        <li>Scale up = beli hardware baru</li>
+                        <li>Kapasitas terbatas</li>
+                    </ul>
+                </div>
+                <div class="comparison-col">
+                    <h3>Cloud Data Warehouse</h3>
+                    <ul>
+                        <li>Compute &amp; storage TERPISAH</li>
+                        <li>Serverless, tidak kelola infra</li>
+                        <li>Auto-scale ribuan CPU otomatis</li>
+                        <li>Bayar per query (pay-as-you-go)</li>
+                        <li>Scale elastis dalam hitungan detik</li>
+                        <li>Petabyte-scale storage</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 8 — ARSITEKTUR BIGQUERY
+         ========================================== -->
+    <section class="slide" data-slide="7">
+        <div class="accent-bar"></div>
+        <div class="bg-number">&#9671;</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Arsitektur</p>
+            <h2 class="reveal">Arsitektur Google BigQuery</h2>
+            <div class="steps reveal">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-title">User / SQL Query</div>
+                    <div class="step-desc">Anda menulis SQL di console, Colab, atau API</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-title">DREMEL Engine</div>
+                    <div class="step-desc">Distributed SQL engine: ribuan CPU memproses query secara paralel</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div class="step-title">COLOSSUS Storage</div>
+                    <div class="step-desc">Columnar storage terdistribusi: data disimpan per kolom, terkompresi</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">4</div>
+                    <div class="step-title">Hasil</div>
+                    <div class="step-desc">Miliaran baris di-scan dalam hitungan detik, hasil dikembalikan ke user</div>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>DREMEL + COLOSSUS</strong> = kombinasi yang membuat BigQuery bisa query 1 TB dalam &lt; 10 detik.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 9 — SEPARATION OF COMPUTE & STORAGE
+         ========================================== -->
+    <section class="slide" data-slide="8">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Konsep Kunci</p>
+            <h2 class="reveal">Separation of Compute &amp; Storage</h2>
+            <div class="comparison reveal">
+                <div class="comparison-col alt">
+                    <h3>Coupled (Tradisional)</h3>
+                    <ul>
+                        <li>CPU &amp; disk di satu server</li>
+                        <li>Tambah storage = beli server baru</li>
+                        <li>Tambah CPU = migrasi data</li>
+                        <li>Bayar keduanya sekaligus</li>
+                        <li>Tidak bisa scale independen</li>
+                    </ul>
+                </div>
+                <div class="comparison-col">
+                    <h3>Decoupled (BigQuery)</h3>
+                    <ul>
+                        <li>Compute dan storage terpisah</li>
+                        <li>Tambah storage tanpa ubah compute</li>
+                        <li>Tambah CPU tanpa pindah data</li>
+                        <li>Bayar storage murah, compute per query</li>
+                        <li>Scale masing-masing independen</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Kenapa penting?</strong> Simpan 100 TB data (murah), tapi hanya bayar compute saat query dijalankan.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 10 — PARTITIONING & CLUSTERING
+         ========================================== -->
+    <section class="slide" data-slide="9">
+        <div class="accent-bar"></div>
+        <div class="bg-number">&#9881;</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Optimasi</p>
+            <h2 class="reveal">Partitioning &amp; Clustering</h2>
+            <div class="two-col reveal">
+                <div>
+                    <h3 style="font-size: clamp(0.9rem, 1.3vw, 1.1rem); margin-bottom: var(--element-gap);">Partitioning</h3>
+                    <ul class="content-list">
+                        <li>Bagi tabel berdasarkan kolom (biasanya <strong>tanggal</strong>)</li>
+                        <li>WHERE date = '2024-01-01' hanya scan 1 partisi</li>
+                        <li>Tanpa partisi: scan SEMUA data (mahal!)</li>
+                        <li>Hemat biaya hingga 90%</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 style="font-size: clamp(0.9rem, 1.3vw, 1.1rem); margin-bottom: var(--element-gap);">Clustering</h3>
+                    <ul class="content-list">
+                        <li>Urutkan data dalam partisi berdasarkan kolom</li>
+                        <li>WHERE kota = 'Jakarta' langsung ke blok relevan</li>
+                        <li>Bisa cluster hingga 4 kolom</li>
+                        <li>Filter lebih cepat, scan lebih sedikit</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="code-block reveal">
+                <code><span class="cm">-- Buat tabel dengan partisi + cluster</span>
+<span class="kw">CREATE TABLE</span> dataset.trips
+<span class="kw">PARTITION BY</span> <span class="fn">DATE</span>(waktu)
+<span class="kw">CLUSTER BY</span> kota, layanan
+<span class="kw">AS SELECT</span> * <span class="kw">FROM</span> raw_trips</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 11 — SQL TINGKAT LANJUT BIGQUERY
+         ========================================== -->
+    <section class="slide" data-slide="10">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">SQL Lanjut</p>
+            <h2 class="reveal">SQL Tingkat Lanjut di BigQuery</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>CTE (WITH)</h4>
+                    <p>Sub-query bernama untuk query kompleks yang mudah dibaca dan di-debug.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Window Functions</h4>
+                    <p>ROW_NUMBER, RANK, LAG, LEAD, Moving Average tanpa mengurangi baris.</p>
+                </div>
+                <div class="info-card">
+                    <h4>UNNEST</h4>
+                    <p>Buka array/nested fields menjadi baris. Kunci untuk data GA4, Firebase, JSON.</p>
+                </div>
+                <div class="info-card">
+                    <h4>APPROX Functions</h4>
+                    <p>APPROX_COUNT_DISTINCT, APPROX_QUANTILES: 100x cepat, error &lt; 2%.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 12 — COST OPTIMIZATION
+         ========================================== -->
+    <section class="slide" data-slide="11">
+        <div class="accent-bar"></div>
+        <div class="bg-number">$</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Hemat Biaya</p>
+            <h2 class="reveal">Cost Optimization BigQuery</h2>
+            <table class="data-table reveal">
+                <thead>
+                    <tr><th>Teknik</th><th>Cara</th><th>Hemat</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>SELECT spesifik</td><td>Pilih kolom yang dibutuhkan saja, bukan SELECT *</td><td>50-90%</td></tr>
+                    <tr><td>Partition pruning</td><td>WHERE tanggal untuk skip partisi lain</td><td>hingga 90%</td></tr>
+                    <tr><td>Clustering</td><td>CLUSTER BY kolom filter untuk scan lebih sedikit</td><td>30-60%</td></tr>
+                    <tr><td>Dry-run estimate</td><td>Cek estimasi GB sebelum run (tombol validator)</td><td>mencegah kejutan</td></tr>
+                    <tr><td>APPROX functions</td><td>APPROX_COUNT_DISTINCT vs COUNT(DISTINCT)</td><td>10-100x cepat</td></tr>
+                    <tr><td>Materialized views</td><td>Pre-compute aggregasi yang sering dipakai</td><td>80-95%</td></tr>
+                </tbody>
+            </table>
+            <div class="tip-box reveal">
+                <p><strong>Selalu cek estimasi!</strong> Di console: klik tombol hijau di kanan atas untuk lihat berapa GB yang akan di-scan.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 13 — BIGQUERY VS DUCKDB
+         ========================================== -->
+    <section class="slide" data-slide="12">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Perbandingan</p>
+            <h2 class="reveal">BigQuery vs DuckDB — Kapan Pakai Apa?</h2>
+            <div class="comparison reveal">
+                <div class="comparison-col">
+                    <h3>BigQuery</h3>
+                    <ul>
+                        <li>Data &gt; 10 GB atau TB-scale</li>
+                        <li>Multi-user / tim kolaborasi</li>
+                        <li>Dashboard &amp; BI (Looker, Data Studio)</li>
+                        <li>Data sudah ada di GCP</li>
+                        <li>Scheduled queries &amp; pipelines</li>
+                        <li>200+ public datasets siap pakai</li>
+                    </ul>
+                </div>
+                <div class="comparison-col alt">
+                    <h3>DuckDB</h3>
+                    <ul>
+                        <li>Data &lt; 10 GB, single machine</li>
+                        <li>Eksplorasi lokal / notebook</li>
+                        <li>Prototyping cepat tanpa cloud</li>
+                        <li>File lokal: CSV, Parquet, JSON</li>
+                        <li>Zero setup, zero cost</li>
+                        <li>Integrasi Pandas/Polars</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Pattern terbaik:</strong> Eksplorasi kecil di DuckDB, lalu scale ke BigQuery untuk produksi.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 14 — SECTION: PRAKTIKUM
+         ========================================== -->
+    <section class="slide section-divider" data-slide="13">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 3</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Praktikum</h2>
+            <div class="section-num">03</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 15 — QUERY NYC TAXI DI BIGQUERY
+         ========================================== -->
+    <section class="slide" data-slide="14">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 1</p>
+            <h2 class="reveal">Query NYC Taxi — Puluhan Juta Baris</h2>
+            <div class="code-block reveal">
+                <code><span class="cm">-- Query public dataset NYC Taxi (puluhan juta baris)</span>
+<span class="kw">SELECT</span>
+    <span class="fn">EXTRACT</span>(<span class="kw">HOUR FROM</span> pickup_datetime) <span class="kw">AS</span> jam,
+    <span class="fn">COUNT</span>(*) <span class="kw">AS</span> total_trips,
+    <span class="fn">ROUND</span>(<span class="fn">AVG</span>(trip_distance), <span class="num">2</span>) <span class="kw">AS</span> avg_jarak,
+    <span class="fn">ROUND</span>(<span class="fn">AVG</span>(total_amount), <span class="num">2</span>) <span class="kw">AS</span> avg_tarif
+<span class="kw">FROM</span>
+    `bigquery-public-data.new_york_taxi_trips.tlc_yellow_trips_2022`
+<span class="kw">WHERE</span>
+    pickup_datetime <span class="kw">BETWEEN</span> <span class="str">'2022-01-01'</span> <span class="kw">AND</span> <span class="str">'2022-03-31'</span>
+<span class="kw">GROUP BY</span> jam
+<span class="kw">ORDER BY</span> jam</code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Puluhan juta baris dalam 3-5 detik!</strong> Perhatikan estimasi GB di kanan atas sebelum run.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 16 — UNNEST: NESTED/REPEATED FIELDS
+         ========================================== -->
+    <section class="slide" data-slide="15">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 2</p>
+            <h2 class="reveal">UNNEST: Nested &amp; Repeated Fields</h2>
+            <p class="reveal" style="max-width: 600px; margin-bottom: var(--element-gap);">Data BigQuery sering punya kolom <strong>ARRAY</strong> atau <strong>STRUCT</strong> (nested). UNNEST membuka array menjadi baris.</p>
+            <div class="code-block reveal">
+                <code><span class="cm">-- Contoh: GA4 events (nested data)</span>
+<span class="kw">SELECT</span>
+    event_name,
+    params.key <span class="kw">AS</span> param_key,
+    params.value.string_value <span class="kw">AS</span> param_value
+<span class="kw">FROM</span>
+    `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`,
+    <span class="fn">UNNEST</span>(event_params) <span class="kw">AS</span> params
+<span class="kw">WHERE</span>
+    _TABLE_SUFFIX <span class="kw">BETWEEN</span> <span class="str">'20210101'</span> <span class="kw">AND</span> <span class="str">'20210131'</span>
+    <span class="kw">AND</span> event_name = <span class="str">'page_view'</span>
+<span class="kw">LIMIT</span> <span class="num">100</span></code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>UNNEST</strong> = kunci untuk data GA4, Firebase, dan JSON nested. Wajib dikuasai!</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 17 — WINDOW FUNCTIONS DI BIGQUERY
+         ========================================== -->
+    <section class="slide" data-slide="16">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 3</p>
+            <h2 class="reveal">Window Functions di BigQuery</h2>
+            <div class="code-block reveal">
+                <code><span class="cm">-- Trend harian + ranking per bulan</span>
+<span class="kw">WITH</span> harian <span class="kw">AS</span> (
+    <span class="kw">SELECT</span>
+        <span class="fn">DATE</span>(pickup_datetime) <span class="kw">AS</span> tgl,
+        <span class="fn">COUNT</span>(*) <span class="kw">AS</span> trips,
+        <span class="fn">ROUND</span>(<span class="fn">AVG</span>(total_amount), <span class="num">2</span>) <span class="kw">AS</span> avg_tarif
+    <span class="kw">FROM</span> `bigquery-public-data.new_york_taxi_trips.tlc_yellow_trips_2022`
+    <span class="kw">WHERE</span> pickup_datetime <span class="kw">BETWEEN</span> <span class="str">'2022-01-01'</span> <span class="kw">AND</span> <span class="str">'2022-01-31'</span>
+    <span class="kw">GROUP BY</span> tgl
+)
+<span class="kw">SELECT</span>
+    tgl, trips, avg_tarif,
+    <span class="fn">AVG</span>(trips) <span class="kw">OVER</span> (<span class="kw">ORDER BY</span> tgl <span class="kw">ROWS BETWEEN</span> <span class="num">6</span> <span class="kw">PRECEDING AND CURRENT ROW</span>) <span class="kw">AS</span> ma_7d,
+    <span class="fn">RANK</span>() <span class="kw">OVER</span> (<span class="kw">ORDER BY</span> trips <span class="kw">DESC</span>) <span class="kw">AS</span> rank_trips
+<span class="kw">FROM</span> harian
+<span class="kw">ORDER BY</span> tgl</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 18 — APPROX FUNCTIONS
+         ========================================== -->
+    <section class="slide" data-slide="17">
+        <div class="accent-bar"></div>
+        <div class="bg-number">&#8776;</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 4</p>
+            <h2 class="reveal">APPROX Functions — Untuk Data Masif</h2>
+            <div class="code-block reveal">
+                <code><span class="cm">-- Perbandingan: exact vs approximate</span>
+
+<span class="cm">-- LAMBAT pada TB data (exact count)</span>
+<span class="kw">SELECT</span> <span class="fn">COUNT</span>(<span class="kw">DISTINCT</span> pickup_location_id) <span class="kw">AS</span> exact_count
+<span class="kw">FROM</span> `bigquery-public-data.new_york_taxi_trips.tlc_yellow_trips_2022`
+
+<span class="cm">-- CEPAT: approximate (error &lt; 2%)</span>
+<span class="kw">SELECT</span> <span class="fn">APPROX_COUNT_DISTINCT</span>(pickup_location_id) <span class="kw">AS</span> approx_count
+<span class="kw">FROM</span> `bigquery-public-data.new_york_taxi_trips.tlc_yellow_trips_2022`
+
+<span class="cm">-- Approximate percentiles</span>
+<span class="kw">SELECT</span> <span class="fn">APPROX_QUANTILES</span>(total_amount, <span class="num">100</span>)[<span class="kw">OFFSET</span>(<span class="num">50</span>)] <span class="kw">AS</span> median_tarif,
+       <span class="fn">APPROX_QUANTILES</span>(total_amount, <span class="num">100</span>)[<span class="kw">OFFSET</span>(<span class="num">95</span>)] <span class="kw">AS</span> p95_tarif
+<span class="kw">FROM</span> `bigquery-public-data.new_york_taxi_trips.tlc_yellow_trips_2022`</code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Gunakan APPROX</strong> untuk data TB-scale. Hasil hampir sama, tapi 10-100x lebih cepat!</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 19 — BIGQUERY + DUCKDB PATTERN
+         ========================================== -->
+    <section class="slide" data-slide="18">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 5</p>
+            <h2 class="reveal">Pattern: BigQuery + DuckDB</h2>
+            <p class="reveal" style="max-width: 600px; margin-bottom: var(--element-gap);">Ambil data besar dari BigQuery, lalu analisis lokal dengan DuckDB. <strong>Best of both worlds.</strong></p>
+            <div class="code-block reveal">
+                <code><span class="cm"># Step 1: Query BigQuery → simpan ke DataFrame</span>
+query = <span class="str">"""
+SELECT DATE(pickup_datetime) AS tgl, COUNT(*) AS trips,
+       AVG(total_amount) AS avg_tarif
+FROM `bigquery-public-data.new_york_taxi_trips.tlc_yellow_trips_2022`
+WHERE pickup_datetime BETWEEN '2022-01-01' AND '2022-06-30'
+GROUP BY tgl
+"""</span>
+df_bq = client.<span class="fn">query</span>(query).<span class="fn">to_dataframe</span>()
+
+<span class="cm"># Step 2: Simpan ke Parquet</span>
+df_bq.<span class="fn">to_parquet</span>(<span class="str">'nyc_daily.parquet'</span>)
+
+<span class="cm"># Step 3: Analisis lokal dengan DuckDB</span>
+<span class="kw">import</span> duckdb
+duckdb.<span class="fn">sql</span>(<span class="str">"""
+SELECT tgl, trips, avg_tarif,
+    AVG(trips) OVER (ORDER BY tgl ROWS 6 PRECEDING) AS ma_7d
+FROM read_parquet('nyc_daily.parquet')
+ORDER BY tgl
+"""</span>).<span class="fn">show</span>()</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 20 — BIGQUERY ML (BONUS)
+         ========================================== -->
+    <section class="slide" data-slide="19">
+        <div class="accent-bar"></div>
+        <div class="bg-number">ML</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bonus</p>
+            <h2 class="reveal">BigQuery ML — Machine Learning via SQL</h2>
+            <div class="code-block reveal">
+                <code><span class="cm">-- Buat model prediksi tip dengan SQL saja!</span>
+<span class="kw">CREATE OR REPLACE MODEL</span> `dataset.tip_model`
+<span class="kw">OPTIONS</span>(model_type=<span class="str">'linear_reg'</span>, input_label_cols=[<span class="str">'tip_amount'</span>]) <span class="kw">AS</span>
+<span class="kw">SELECT</span>
+    trip_distance, fare_amount, passenger_count,
+    <span class="fn">EXTRACT</span>(<span class="kw">HOUR FROM</span> pickup_datetime) <span class="kw">AS</span> hour,
+    tip_amount
+<span class="kw">FROM</span> `bigquery-public-data.new_york_taxi_trips.tlc_yellow_trips_2022`
+<span class="kw">WHERE</span> tip_amount &gt; <span class="num">0</span> <span class="kw">AND</span> trip_distance &gt; <span class="num">0</span>
+<span class="kw">LIMIT</span> <span class="num">100000</span>
+
+<span class="cm">-- Evaluasi model</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="fn">ML.EVALUATE</span>(<span class="fn">MODEL</span> `dataset.tip_model`)</code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>ML tanpa Python/R!</strong> Linear Reg, Logistic Reg, K-Means, XGBoost, ARIMA — semua via SQL.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 21 — BENCHMARK: BIGQUERY SPEED
+         ========================================== -->
+    <section class="slide" data-slide="20">
+        <div class="accent-bar"></div>
+        <div class="bg-number">&#9889;</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Benchmark</p>
+            <h2 class="reveal">BigQuery Speed — Real World</h2>
+            <div class="reveal" style="margin-top: var(--content-gap);">
+                <p style="font-size: var(--small-size); margin-bottom: var(--element-gap);"><strong>NYC Taxi: 40M rows, GROUP BY + AVG</strong></p>
+                <div class="bench-row">
+                    <span class="bench-label">Pandas</span>
+                    <div class="bench-bar alt" style="width: 85%"><span>12.5s</span></div>
+                </div>
+                <div class="bench-row">
+                    <span class="bench-label">DuckDB</span>
+                    <div class="bench-bar alt" style="width: 15%"><span>1.8s</span></div>
+                </div>
+                <div class="bench-row">
+                    <span class="bench-label">BigQuery</span>
+                    <div class="bench-bar" style="width: 5%"><span>3.2s</span></div>
+                    <span class="bench-speedup">cloud!</span>
+                </div>
+                <p style="font-size: var(--small-size); margin: var(--element-gap) 0;"><strong>Full Year NYC Taxi: 200M+ rows</strong></p>
+                <div class="bench-row">
+                    <span class="bench-label">Pandas</span>
+                    <div class="bench-bar alt" style="width: 90%"><span>OOM / crash</span></div>
+                </div>
+                <div class="bench-row">
+                    <span class="bench-label">DuckDB</span>
+                    <div class="bench-bar alt" style="width: 40%"><span>8.5s (lokal)</span></div>
+                </div>
+                <div class="bench-row">
+                    <span class="bench-label">BigQuery</span>
+                    <div class="bench-bar" style="width: 5%"><span>4.1s</span></div>
+                    <span class="bench-speedup">scales!</span>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>BigQuery tidak melambat</strong> meskipun data bertambah 10x. Inilah kekuatan cloud!</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 22 — PRICING MODEL
+         ========================================== -->
+    <section class="slide" data-slide="21">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Pricing</p>
+            <h2 class="reveal">Model Pricing BigQuery</h2>
+            <table class="data-table reveal">
+                <thead>
+                    <tr><th>Komponen</th><th>Free Tier</th><th>Bayar (On-Demand)</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Query</td><td>1 TB/bulan</td><td>$6.25/TB setelah free tier</td></tr>
+                    <tr><td>Storage (Active)</td><td>10 GB</td><td>$0.02/GB/bulan</td></tr>
+                    <tr><td>Storage (Long-term)</td><td>10 GB</td><td>$0.01/GB/bulan</td></tr>
+                    <tr><td>Streaming Insert</td><td>Gratis (batch)</td><td>$0.01/200 MB</td></tr>
+                    <tr><td>BigQuery ML</td><td>10 GB/bulan</td><td>$250/TB</td></tr>
+                </tbody>
+            </table>
+            <div class="tip-box reveal">
+                <p><strong>Untuk kuliah: 100% gratis!</strong> 1 TB query/bulan sangat cukup untuk ratusan query belajar.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 23 — PUBLIC DATASETS
+         ========================================== -->
+    <section class="slide" data-slide="22">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Datasets</p>
+            <h2 class="reveal">200+ Public Datasets Gratis</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>NYC Taxi Trips</h4>
+                    <p>Ratusan juta baris data perjalanan taksi New York.</p>
+                </div>
+                <div class="info-card">
+                    <h4>GitHub Activity</h4>
+                    <p>Semua event publik di GitHub: push, PR, issues, stars.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Stack Overflow</h4>
+                    <p>50M+ pertanyaan, jawaban, votes, tags, users.</p>
+                </div>
+                <div class="info-card">
+                    <h4>GA4 E-Commerce</h4>
+                    <p>Sample data Google Analytics 4 dari toko online (nested).</p>
+                </div>
+                <div class="info-card">
+                    <h4>Wikipedia</h4>
+                    <p>Pageviews, revision history semua artikel Wikipedia.</p>
+                </div>
+                <div class="info-card">
+                    <h4>NOAA Weather</h4>
+                    <p>Data cuaca global dari ribuan stasiun sejak tahun 1900-an.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 24 — SECTION: TIPS & KESALAHAN
+         ========================================== -->
+    <section class="slide section-divider" data-slide="23">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 4</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Tips &<br>Kesalahan Umum</h2>
+            <div class="section-num">04</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 25 — KESALAHAN UMUM
+         ========================================== -->
+    <section class="slide" data-slide="24">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Hindari</p>
+            <h2 class="reveal">Kesalahan Umum BigQuery</h2>
+            <ul class="content-list reveal">
+                <li><strong>SELECT *</strong> pada tabel besar &rarr; kuota 1 TB cepat habis! <em>Fix: SELECT hanya kolom yang dibutuhkan</em></li>
+                <li><strong>Query tanpa WHERE tanggal</strong> pada tabel partisi &rarr; scan semua partisi (mahal). <em>Fix: Selalu filter tanggal</em></li>
+                <li><strong>Tidak cek estimasi GB</strong> sebelum run &rarr; kaget kuota habis. <em>Fix: Lihat validator di kanan atas console</em></li>
+                <li><strong>COUNT(DISTINCT x)</strong> pada data TB &rarr; lambat &amp; mahal. <em>Fix: Pakai APPROX_COUNT_DISTINCT</em></li>
+                <li><strong>Lupa LIMIT</strong> saat eksplorasi &rarr; download jutaan baris ke browser. <em>Fix: Selalu LIMIT 100 saat eksplorasi</em></li>
+                <li><strong>Ignore nested data</strong> &rarr; query error pada kolom ARRAY. <em>Fix: Pakai UNNEST untuk buka nested fields</em></li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 26 — TIPS HEMAT KUOTA
+         ========================================== -->
+    <section class="slide" data-slide="25">
+        <div class="accent-bar"></div>
+        <div class="bg-number">&#10003;</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Tips</p>
+            <h2 class="reveal">Tips Hemat Kuota 1 TB</h2>
+            <div class="steps reveal">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-title">Preview Dulu</div>
+                    <div class="step-desc">Klik Preview tab di console — gratis, tidak pakai kuota</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-title">SELECT Spesifik</div>
+                    <div class="step-desc">SELECT nama, kota bukan SELECT * — hemat 80%+</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div class="step-title">WHERE Tanggal</div>
+                    <div class="step-desc">Filter partisi tanggal untuk skip data lama</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">4</div>
+                    <div class="step-title">Cek Estimasi</div>
+                    <div class="step-desc">Tombol hijau di kanan atas: "This query will process X GB"</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">5</div>
+                    <div class="step-title">Simpan Hasil</div>
+                    <div class="step-desc">Export ke Parquet/CSV, analisis lanjutan di DuckDB lokal</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 27 — DISKUSI & PERTANYAAN
+         ========================================== -->
+    <section class="slide" data-slide="26">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Refleksi</p>
+            <h2 class="reveal">Diskusi &amp; Pertanyaan</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>Q1</h4>
+                    <p>Apa keuntungan separation of compute &amp; storage? (scale independen, bayar per query)</p>
+                </div>
+                <div class="info-card">
+                    <h4>Q2</h4>
+                    <p>Kapan pakai BigQuery vs DuckDB? (TB-scale cloud vs GB-scale lokal)</p>
+                </div>
+                <div class="info-card">
+                    <h4>Q3</h4>
+                    <p>Kenapa SELECT * mahal di BigQuery? (columnar storage = bayar per kolom yang di-scan)</p>
+                </div>
+                <div class="info-card">
+                    <h4>Q4</h4>
+                    <p>Apa fungsi UNNEST? (buka array/nested fields menjadi baris untuk di-query)</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 28 — RINGKASAN
+         ========================================== -->
+    <section class="slide" data-slide="27">
+        <div class="accent-bar"></div>
+        <div class="bg-number">&#10003;</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Ringkasan</p>
+            <h2 class="reveal">Apa yang Sudah Kita Pelajari</h2>
+            <ul class="content-list reveal">
+                <li><strong>BigQuery</strong> = cloud data warehouse serverless, 1 TB gratis/bulan, tanpa CC</li>
+                <li><strong>Arsitektur</strong> = DREMEL (compute) + COLOSSUS (storage) terpisah, auto-scale</li>
+                <li><strong>Partitioning &amp; Clustering</strong> = hemat biaya hingga 90%, scan data lebih sedikit</li>
+                <li><strong>SQL Lanjut</strong> = CTE, Window Functions, UNNEST, APPROX functions</li>
+                <li><strong>Cost optimization</strong> = SELECT spesifik, WHERE tanggal, cek estimasi, APPROX</li>
+                <li><strong>Pattern terbaik</strong> = BigQuery untuk data besar, export ke Parquet, analisis lokal di DuckDB</li>
+                <li><strong>200+ public datasets</strong> = NYC Taxi, GA4, Stack Overflow, GitHub, Wikipedia</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 29 — SECTION: STUDI KASUS & TUGAS
+         ========================================== -->
+    <section class="slide section-divider" data-slide="28">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 5</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Studi Kasus<br>&amp; Tugas</h2>
+            <div class="section-num">05</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 30 — TUGAS: GA4 + STACKOVERFLOW
+         ========================================== -->
+    <section class="slide" data-slide="29">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Tugas</p>
+            <h2 class="reveal">GA4 E-Commerce + Stack Overflow</h2>
+            <div class="two-col reveal">
+                <div>
+                    <h3 style="font-size: clamp(0.8rem, 1.2vw, 1rem); margin-bottom: var(--element-gap);">Dataset A: GA4 E-Commerce</h3>
+                    <ul class="content-list">
+                        <li>UNNEST event_params: page_view, purchase</li>
+                        <li>Top 10 halaman paling sering dikunjungi</li>
+                        <li>Conversion rate: view &rarr; add_to_cart &rarr; purchase</li>
+                        <li>Revenue per traffic source (UTM)</li>
+                        <li>Window: trend harian event counts</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 style="font-size: clamp(0.8rem, 1.2vw, 1rem); margin-bottom: var(--element-gap);">Dataset B: Stack Overflow</h3>
+                    <ul class="content-list">
+                        <li>Top 20 tags paling populer per tahun</li>
+                        <li>Rata-rata waktu jawab per tag</li>
+                        <li>APPROX_COUNT_DISTINCT users per tag</li>
+                        <li>Window: trend popularitas Python vs JavaScript</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Kumpulkan:</strong> Notebook (.ipynb) + screenshot hasil query di BigQuery console atau Colab</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 31 — REFERENSI
+         ========================================== -->
+    <section class="slide" data-slide="30">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Referensi</p>
+            <h2 class="reveal">Bahan Belajar Mandiri</h2>
+            <ul class="content-list reveal">
+                <li><strong>BigQuery Docs:</strong> cloud.google.com/bigquery/docs</li>
+                <li><strong>BigQuery Sandbox:</strong> cloud.google.com/bigquery/docs/sandbox</li>
+                <li><strong>Public Datasets:</strong> cloud.google.com/bigquery/public-data</li>
+                <li><strong>BigQuery ML:</strong> cloud.google.com/bigquery-ml/docs</li>
+                <li><strong>SQL Reference:</strong> cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax</li>
+                <li><strong>Buku:</strong> Valliappa Lakshmanan — Google BigQuery: The Definitive Guide (O'Reilly)</li>
+                <li><strong>Zoomcamp:</strong> github.com/DataTalksClub/data-engineering-zoomcamp (Week 3: BigQuery)</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ===========================================
+         JAVASCRIPT: Presentation Controller
+         =========================================== -->
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.isScrolling = false;
+                this.setupIntersectionObserver();
+                this.setupKeyboardNav();
+                this.setupTouchNav();
+                this.setupWheelNav();
+                this.setupProgressBar();
+                this.setupNavDots();
+            }
+
+            setupIntersectionObserver() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            const idx = Array.from(this.slides).indexOf(entry.target);
+                            if (idx !== -1) {
+                                this.currentSlide = idx;
+                                this.updateProgressBar();
+                                this.updateNavDots();
+                            }
+                        }
+                    });
+                }, { threshold: 0.5 });
+                this.slides.forEach(slide => observer.observe(slide));
+            }
+
+            goToSlide(index) {
+                if (index >= 0 && index < this.slides.length) {
+                    this.slides[index].scrollIntoView({ behavior: 'smooth' });
+                    this.currentSlide = index;
+                    this.updateProgressBar();
+                    this.updateNavDots();
+                }
+            }
+
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.target.getAttribute && e.target.getAttribute('contenteditable') === 'true') return;
+                    switch(e.key) {
+                        case 'ArrowDown': case 'ArrowRight': case ' ': case 'PageDown':
+                            e.preventDefault(); this.goToSlide(this.currentSlide + 1); break;
+                        case 'ArrowUp': case 'ArrowLeft': case 'PageUp':
+                            e.preventDefault(); this.goToSlide(this.currentSlide - 1); break;
+                        case 'Home': e.preventDefault(); this.goToSlide(0); break;
+                        case 'End': e.preventDefault(); this.goToSlide(this.slides.length - 1); break;
+                    }
+                });
+            }
+
+            setupTouchNav() {
+                let startY = 0;
+                document.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; }, { passive: true });
+                document.addEventListener('touchend', (e) => {
+                    const diff = startY - e.changedTouches[0].clientY;
+                    if (Math.abs(diff) > 50) {
+                        diff > 0 ? this.goToSlide(this.currentSlide + 1) : this.goToSlide(this.currentSlide - 1);
+                    }
+                }, { passive: true });
+            }
+
+            setupWheelNav() {
+                let timeout;
+                document.addEventListener('wheel', (e) => {
+                    if (this.isScrolling) return;
+                    this.isScrolling = true;
+                    clearTimeout(timeout);
+                    if (e.deltaY > 30) this.goToSlide(this.currentSlide + 1);
+                    else if (e.deltaY < -30) this.goToSlide(this.currentSlide - 1);
+                    timeout = setTimeout(() => { this.isScrolling = false; }, 800);
+                }, { passive: true });
+            }
+
+            setupProgressBar() {
+                this.progressBar = document.getElementById('progressBar');
+                this.updateProgressBar();
+            }
+
+            updateProgressBar() {
+                const pct = ((this.currentSlide + 1) / this.slides.length) * 100;
+                if (this.progressBar) this.progressBar.style.width = pct + '%';
+            }
+
+            setupNavDots() {
+                const container = document.getElementById('navDots');
+                if (!container) return;
+                this.slides.forEach((_, i) => {
+                    const dot = document.createElement('button');
+                    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+                    dot.addEventListener('click', () => this.goToSlide(i));
+                    dot.setAttribute('aria-label', `Slide ${i + 1}`);
+                    container.appendChild(dot);
+                });
+                this.dots = container.querySelectorAll('.nav-dot');
+            }
+
+            updateNavDots() {
+                if (!this.dots) return;
+                this.dots.forEach((dot, i) => {
+                    dot.classList.toggle('active', i === this.currentSlide);
+                });
+            }
+        }
+
+        /* ===========================================
+           INLINE EDITOR
+           =========================================== */
+        class InlineEditor {
+            constructor() {
+                this.isActive = false;
+                this.storageKey = 'slides-p10-edits';
+                this.loadEdits();
+            }
+
+            toggleEditMode() {
+                this.isActive = !this.isActive;
+                document.body.classList.toggle('editing-active', this.isActive);
+                document.getElementById('editToggle').classList.toggle('active', this.isActive);
+                const editables = document.querySelectorAll('h1,h2,h3,h4,p,li,span,.step-desc,.step-title,.tag');
+                editables.forEach(el => {
+                    if (el.closest('.nav-dots') || el.closest('.edit-toggle')) return;
+                    el.contentEditable = this.isActive ? 'true' : 'false';
+                });
+                if (this.isActive) {
+                    document.addEventListener('input', this._saveHandler = () => this.saveEdits());
+                } else {
+                    document.removeEventListener('input', this._saveHandler);
+                    this.saveEdits();
+                }
+            }
+
+            saveEdits() {
+                const data = {};
+                document.querySelectorAll('.slide').forEach((slide, i) => {
+                    data[i] = slide.innerHTML;
+                });
+                try { localStorage.setItem(this.storageKey, JSON.stringify(data)); } catch(e) {}
+                const notice = document.getElementById('saveNotice');
+                notice.classList.add('show');
+                setTimeout(() => notice.classList.remove('show'), 1200);
+            }
+
+            loadEdits() {
+                try {
+                    const data = JSON.parse(localStorage.getItem(this.storageKey));
+                    if (!data) return;
+                    document.querySelectorAll('.slide').forEach((slide, i) => {
+                        if (data[i]) slide.innerHTML = data[i];
+                    });
+                } catch(e) {}
+            }
+        }
+
+        /* Init */
+        const presentation = new SlidePresentation();
+        const editor = new InlineEditor();
+
+        /* Edit hotzone + toggle */
+        const hotzone = document.getElementById('editHotzone');
+        const editToggle = document.getElementById('editToggle');
+        let hideTimeout = null;
+        hotzone.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); editToggle.classList.add('show'); });
+        hotzone.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+        editToggle.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); });
+        editToggle.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+        editToggle.addEventListener('click', () => editor.toggleEditMode());
+        hotzone.addEventListener('click', () => editor.toggleEditMode());
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) editor.toggleEditMode();
+        });
+    </script>
+</body>
+</html>

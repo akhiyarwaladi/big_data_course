@@ -1,0 +1,1625 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pertemuan 9 — DuckDB: Database Analitik Modern</title>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;800&family=Nunito:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES — SWISS MODERN THEME
+           =========================================== */
+        :root {
+            --bg-white: #ffffff;
+            --bg-light: #f8f8f8;
+            --text-primary: #0a0a0a;
+            --text-secondary: #555;
+            --text-muted: #888;
+            --accent-red: #ff3300;
+            --accent-red-light: rgba(255, 51, 0, 0.08);
+            --accent-red-glow: rgba(255, 51, 0, 0.15);
+            --grid-color: rgba(0,0,0,0.05);
+            --border-color: rgba(0,0,0,0.1);
+            --font-display: 'Archivo', sans-serif;
+            --font-body: 'Nunito', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration-normal: 0.6s;
+
+            --title-size: clamp(2.2rem, 6vw, 5rem);
+            --h2-size: clamp(1.8rem, 4.5vw, 3.2rem);
+            --h3-size: clamp(1.3rem, 3vw, 2.2rem);
+            --body-size: clamp(1rem, 2vw, 1.5rem);
+            --small-size: clamp(0.85rem, 1.4vw, 1.15rem);
+            --slide-padding: clamp(1rem, 3vw, 2.5rem);
+            --content-gap: clamp(0.5rem, 1.5vw, 1.5rem);
+            --element-gap: clamp(0.25rem, 0.8vw, 0.75rem);
+        }
+
+        /* ===========================================
+           BASE RESET
+           =========================================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ===========================================
+           VIEWPORT FITTING — MANDATORY BASE STYLES
+           =========================================== */
+        html, body { height: 100%; overflow-x: hidden; }
+        html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+
+        .slide {
+            width: 100vw; height: 100vh; height: 100dvh;
+            overflow: hidden; scroll-snap-align: start;
+            display: flex; flex-direction: column; position: relative;
+        }
+        .slide-content {
+            flex: 1; display: flex; flex-direction: column; justify-content: center;
+            max-height: 100%; overflow: hidden;
+            padding: clamp(1.5rem, 3vh, 3rem) var(--slide-padding);
+            padding-left: clamp(2.5rem, 5vw, 5rem);
+            padding-right: clamp(2rem, 4vw, 4rem);
+        }
+        .card, .container, .content-box {
+            max-width: min(95vw, 1200px); max-height: min(90vh, 800px);
+        }
+        .feature-list, .bullet-list { gap: clamp(0.4rem, 1vh, 1rem); }
+        .feature-list li, .bullet-list li { font-size: var(--body-size); line-height: 1.4; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+            gap: clamp(0.5rem, 1.5vw, 1rem);
+        }
+        img, .image-container { max-width: 100%; max-height: min(50vh, 400px); object-fit: contain; }
+
+        @media (max-height: 700px) {
+            :root {
+                --slide-padding: clamp(0.75rem, 2vw, 1.5rem);
+                --content-gap: clamp(0.4rem, 1vw, 0.8rem);
+                --title-size: clamp(1.6rem, 5vw, 3rem);
+                --h2-size: clamp(1.3rem, 3.5vw, 2.2rem);
+                --body-size: clamp(0.85rem, 1.6vw, 1.2rem);
+            }
+        }
+        @media (max-height: 600px) {
+            :root {
+                --slide-padding: clamp(0.5rem, 1.5vw, 1rem);
+                --content-gap: clamp(0.3rem, 0.8vw, 0.6rem);
+                --title-size: clamp(1.4rem, 4.5vw, 2.5rem);
+                --body-size: clamp(0.8rem, 1.4vw, 1.1rem);
+            }
+            .nav-dots, .keyboard-hint, .decorative { display: none; }
+        }
+        @media (max-height: 500px) {
+            :root {
+                --slide-padding: clamp(0.4rem, 1.5vw, 0.8rem);
+                --title-size: clamp(1.2rem, 4vw, 2rem);
+                --h2-size: clamp(1rem, 3vw, 1.5rem);
+                --body-size: clamp(0.75rem, 1.2vw, 1rem);
+            }
+        }
+        @media (max-width: 600px) {
+            :root { --title-size: clamp(1.5rem, 8vw, 3rem); }
+            .grid { grid-template-columns: 1fr; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.2s !important;
+            }
+            html { scroll-behavior: auto; }
+        }
+
+        /* ===========================================
+           SWISS MODERN — GRID BACKGROUND
+           =========================================== */
+        .slide::before {
+            content: '';
+            position: absolute; inset: 0;
+            background-image:
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: clamp(30px, 5vw, 60px) clamp(30px, 5vw, 60px);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .slide > * { position: relative; z-index: 1; }
+
+        /* ===========================================
+           ACCENT BAR (left edge)
+           =========================================== */
+        .accent-bar {
+            position: absolute; left: 0; top: 0; bottom: 0;
+            width: clamp(4px, 0.5vw, 6px);
+            background: var(--accent-red);
+            z-index: 2;
+        }
+
+        /* ===========================================
+           TYPOGRAPHY
+           =========================================== */
+        body { font-family: var(--font-body); color: var(--text-primary); background: var(--bg-white); }
+
+        h1, h2, h3 { font-family: var(--font-display); font-weight: 800; line-height: 1.1; }
+        h1 { font-size: var(--title-size); }
+        h2 { font-size: var(--h2-size); margin-bottom: var(--content-gap); }
+        h3 { font-size: var(--h3-size); }
+        p, li { font-size: var(--body-size); line-height: 1.6; color: var(--text-secondary); }
+        .highlight { color: var(--accent-red); }
+        .tag-label {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(0.8rem, 1.3vw, 1.1rem);
+            color: var(--accent-red); text-transform: uppercase; letter-spacing: 0.2em;
+            margin-bottom: var(--element-gap);
+        }
+
+        /* ===========================================
+           LARGE BACKGROUND NUMBER
+           =========================================== */
+        .bg-number {
+            position: absolute;
+            right: clamp(1rem, 4vw, 4rem);
+            top: clamp(0.5rem, 2vh, 2rem);
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(5rem, 15vw, 12rem);
+            color: rgba(0,0,0,0.03);
+            line-height: 1; z-index: 0; pointer-events: none;
+        }
+
+        /* ===========================================
+           SECTION DIVIDER SLIDES
+           =========================================== */
+        .slide.section-divider {
+            background: var(--text-primary);
+        }
+        .slide.section-divider::before {
+            background-image:
+                linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+        }
+        .slide.section-divider .accent-bar { background: var(--accent-red); }
+        .slide.section-divider h2 { color: #fff; }
+        .slide.section-divider .section-num {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(4rem, 12vw, 10rem);
+            color: rgba(255,255,255,0.06);
+            position: absolute;
+            right: clamp(2rem, 6vw, 6rem);
+            bottom: clamp(1rem, 4vh, 4rem);
+        }
+        .slide.section-divider .tag-label { color: var(--accent-red); }
+
+        /* ===========================================
+           TITLE SLIDE
+           =========================================== */
+        .slide.title-slide { background: var(--bg-white); }
+        .title-meta {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+            color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em;
+            margin-bottom: clamp(0.5rem, 1vh, 1rem);
+        }
+        .title-slide h1 {
+            font-size: clamp(2.5rem, 6.5vw, 5.5rem);
+            margin-bottom: clamp(0.5rem, 1.5vh, 1.5rem);
+        }
+        .title-desc {
+            font-size: clamp(1.1rem, 2vw, 1.5rem);
+            color: var(--text-secondary);
+            max-width: 700px; line-height: 1.6;
+            margin-bottom: clamp(0.75rem, 2vh, 1.5rem);
+        }
+        .tags {
+            display: flex; gap: clamp(8px, 1vw, 14px); flex-wrap: wrap;
+        }
+        .tag {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.7rem, 1.1vw, 0.95rem);
+            text-transform: uppercase; letter-spacing: 0.08em;
+            padding: clamp(4px, 0.6vh, 8px) clamp(10px, 1.2vw, 18px);
+            border: 2px solid var(--text-primary);
+            color: var(--text-primary);
+        }
+        .tag.active { background: var(--text-primary); color: var(--bg-white); }
+
+        /* ===========================================
+           CONTENT COMPONENTS
+           =========================================== */
+        /* Comparison columns */
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: clamp(1rem, 3vw, 3rem);
+            margin-top: var(--content-gap);
+        }
+        @media (max-width: 600px) { .comparison { grid-template-columns: 1fr; } }
+        .comparison-col h3 {
+            font-size: clamp(1.1rem, 1.8vw, 1.5rem);
+            margin-bottom: var(--element-gap);
+            padding-bottom: var(--element-gap);
+            border-bottom: 3px solid var(--accent-red);
+        }
+        .comparison-col.alt h3 { border-bottom-color: var(--text-primary); }
+        .comparison-col ul { list-style: none; }
+        .comparison-col li {
+            font-size: clamp(0.9rem, 1.4vw, 1.2rem);
+            padding: clamp(3px, 0.4vh, 6px) 0;
+            padding-left: 1.2em;
+            position: relative;
+        }
+        .comparison-col li::before {
+            content: '→';
+            position: absolute; left: 0;
+            color: var(--accent-red);
+            font-weight: 700;
+        }
+
+        /* Steps */
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+            gap: clamp(0.5rem, 1.5vw, 1.5rem);
+            margin-top: var(--content-gap);
+        }
+        .step {
+            border-left: 3px solid var(--accent-red);
+            padding-left: clamp(0.5rem, 1vw, 1rem);
+        }
+        .step-num {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(1.5rem, 2.5vw, 2.2rem);
+            color: var(--accent-red); line-height: 1;
+        }
+        .step-title {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.9rem, 1.4vw, 1.2rem);
+            color: var(--text-primary);
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin: clamp(2px, 0.3vh, 4px) 0;
+        }
+        .step-desc {
+            font-size: clamp(0.85rem, 1.3vw, 1.1rem);
+            color: var(--text-secondary);
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: #1a1a1a;
+            border-radius: 4px;
+            padding: clamp(0.5rem, 1.5vw, 1.5rem);
+            margin-top: var(--element-gap);
+            overflow-x: auto;
+            max-height: min(45vh, 350px);
+        }
+        .code-block code {
+            font-family: var(--font-mono);
+            font-size: clamp(0.85rem, 1.4vw, 1.15rem);
+            color: #e0e0e0; line-height: 1.5;
+            white-space: pre;
+        }
+        .code-block .kw { color: #ff7b72; }
+        .code-block .fn { color: #d2a8ff; }
+        .code-block .str { color: #a5d6ff; }
+        .code-block .cm { color: #8b949e; }
+        .code-block .num { color: #79c0ff; }
+
+        /* Info cards */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+            gap: clamp(0.5rem, 1vw, 1rem);
+            margin-top: var(--content-gap);
+        }
+        .info-card {
+            padding: clamp(0.5rem, 1.5vw, 1.5rem);
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+        .info-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0;
+            height: 3px; background: var(--accent-red);
+        }
+        .info-card h4 {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(0.95rem, 1.5vw, 1.25rem);
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin-bottom: clamp(2px, 0.5vh, 6px);
+        }
+        .info-card p { font-size: clamp(0.9rem, 1.3vw, 1.15rem); }
+
+        /* Benchmark bars */
+        .bench-row {
+            display: flex; align-items: center;
+            gap: clamp(0.5rem, 1vw, 1rem);
+            margin-bottom: clamp(0.3rem, 0.5vh, 0.5rem);
+        }
+        .bench-label {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+            min-width: clamp(70px, 10vw, 120px);
+            text-align: right;
+        }
+        .bench-bar {
+            height: clamp(28px, 4vh, 40px);
+            background: var(--accent-red);
+            border-radius: 2px;
+            display: flex; align-items: center;
+            padding-left: clamp(6px, 0.8vw, 12px);
+            transition: width 1s var(--ease-out-expo);
+        }
+        .bench-bar.alt { background: var(--text-primary); }
+        .bench-bar span {
+            font-family: var(--font-mono);
+            font-size: clamp(0.75rem, 1.1vw, 1rem);
+            color: #fff; white-space: nowrap;
+            font-weight: 500;
+        }
+        .bench-speedup {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(1rem, 1.5vw, 1.3rem);
+            color: var(--accent-red);
+        }
+
+        /* Bullet list */
+        .content-list {
+            list-style: none;
+            margin-top: var(--element-gap);
+        }
+        .content-list li {
+            padding: clamp(3px, 0.5vh, 6px) 0;
+            padding-left: 1.5em; position: relative;
+            font-size: var(--body-size);
+        }
+        .content-list li::before {
+            content: ''; position: absolute;
+            left: 0; top: clamp(10px, 1.2vh, 14px);
+            width: 8px; height: 3px;
+            background: var(--accent-red);
+        }
+
+        /* Tip/warning box */
+        .tip-box {
+            border-left: 4px solid var(--accent-red);
+            background: var(--accent-red-light);
+            padding: clamp(0.5rem, 1vw, 1rem);
+            margin-top: var(--element-gap);
+        }
+        .tip-box p { font-size: clamp(0.9rem, 1.4vw, 1.2rem); color: var(--text-primary); }
+        .tip-box strong { color: var(--accent-red); }
+
+        /* Table */
+        .data-table {
+            width: 100%; border-collapse: collapse;
+            margin-top: var(--element-gap);
+            font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+        }
+        .data-table th {
+            font-family: var(--font-display); font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            font-size: clamp(0.8rem, 1.2vw, 1.05rem);
+            text-align: left;
+            padding: clamp(6px, 0.8vh, 12px) clamp(8px, 1.2vw, 16px);
+            border-bottom: 2px solid var(--text-primary);
+            color: var(--text-primary);
+        }
+        .data-table td {
+            padding: clamp(5px, 0.7vh, 10px) clamp(8px, 1.2vw, 16px);
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+        .data-table td:first-child { font-weight: 600; color: var(--text-primary); }
+
+        /* Two column layout */
+        .two-col {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: clamp(1rem, 3vw, 3rem);
+            margin-top: var(--content-gap);
+        }
+        @media (max-width: 600px) { .two-col { grid-template-columns: 1fr; } }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal {
+            opacity: 0; transform: translateY(20px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .reveal-left {
+            opacity: 0; transform: translateX(-30px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .slide.visible .reveal,
+        .slide.visible .reveal-left {
+            opacity: 1; transform: translate(0);
+        }
+        .slide.visible .reveal:nth-child(1) { transition-delay: 0.05s; }
+        .slide.visible .reveal:nth-child(2) { transition-delay: 0.1s; }
+        .slide.visible .reveal:nth-child(3) { transition-delay: 0.15s; }
+        .slide.visible .reveal:nth-child(4) { transition-delay: 0.2s; }
+        .slide.visible .reveal:nth-child(5) { transition-delay: 0.25s; }
+        .slide.visible .reveal:nth-child(6) { transition-delay: 0.3s; }
+
+        /* ===========================================
+           PROGRESS BAR
+           =========================================== */
+        .progress-bar {
+            position: fixed; top: 0; left: 0;
+            height: 3px; background: var(--accent-red);
+            z-index: 9999; transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        /* ===========================================
+           NAV DOTS
+           =========================================== */
+        .nav-dots {
+            position: fixed; right: clamp(8px, 1vw, 16px);
+            top: 50%; transform: translateY(-50%);
+            display: flex; flex-direction: column;
+            gap: clamp(4px, 0.5vh, 8px); z-index: 9998;
+        }
+        .nav-dot {
+            width: clamp(6px, 0.5vw, 8px); height: clamp(6px, 0.5vw, 8px);
+            background: var(--border-color);
+            border-radius: 50%; cursor: pointer;
+            transition: all 0.3s ease; border: none; padding: 0;
+        }
+        .nav-dot.active {
+            background: var(--accent-red);
+            transform: scale(1.4);
+        }
+
+        /* ===========================================
+           EDIT MODE (opt-in)
+           =========================================== */
+        .edit-hotzone {
+            position: fixed; top: 0; left: 0;
+            width: 80px; height: 80px;
+            z-index: 10000; cursor: pointer;
+        }
+        .edit-toggle {
+            position: fixed; top: 16px; left: 16px;
+            width: 36px; height: 36px;
+            background: var(--text-primary); color: #fff;
+            border: none; border-radius: 4px;
+            font-size: 16px; cursor: pointer;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 10001;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+        .edit-toggle.active { background: var(--accent-red); }
+        .editing-active [contenteditable="true"] {
+            outline: 2px dashed var(--accent-red-glow);
+            outline-offset: 2px;
+            cursor: text;
+        }
+        .edit-save-notice {
+            position: fixed; bottom: 20px; left: 50%;
+            transform: translateX(-50%);
+            background: var(--text-primary); color: #fff;
+            padding: 8px 20px; border-radius: 4px;
+            font-family: var(--font-body); font-size: 13px;
+            opacity: 0; transition: opacity 0.3s;
+            z-index: 10002; pointer-events: none;
+        }
+        .edit-save-notice.show { opacity: 1; }
+    </style>
+</head>
+<body>
+    <!-- Progress bar -->
+    <div class="progress-bar" id="progressBar"></div>
+    <!-- Nav dots (generated by JS) -->
+    <nav class="nav-dots" id="navDots"></nav>
+    <!-- Edit mode -->
+    <div class="edit-hotzone" id="editHotzone"></div>
+    <button class="edit-toggle" id="editToggle" title="Edit mode (E)">&#9998;</button>
+    <div class="edit-save-notice" id="saveNotice">Tersimpan!</div>
+
+    <!-- ==========================================
+         SLIDE 1 — TITLE
+         ========================================== -->
+    <section class="slide title-slide" data-slide="0">
+        <div class="accent-bar"></div>
+        <div class="bg-number">09</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Pertemuan 09</p>
+            <h1 class="reveal">DuckDB: Database<br><span class="highlight">Analitik Modern</span></h1>
+            <p class="title-desc reveal">Query 10 juta baris dalam hitungan detik. Pengganti Hadoop/Spark untuk analytics modern.</p>
+            <div class="tags reveal">
+                <span class="tag active">DuckDB</span>
+                <span class="tag">Parquet</span>
+                <span class="tag">SQL</span>
+                <span class="tag">Google Colab</span>
+                <span class="tag">Gratis</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 2 — SECTION: SETUP
+         ========================================== -->
+    <section class="slide section-divider" data-slide="1">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 1</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Setup &<br>Persiapan</h2>
+            <div class="section-num">01</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 3 — SETUP GOOGLE COLAB
+         ========================================== -->
+    <section class="slide" data-slide="2">
+        <div class="accent-bar"></div>
+        <div class="bg-number">01</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Setup</p>
+            <h2 class="reveal">Setup Google Colab</h2>
+            <div class="steps reveal">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-title">Buka Colab</div>
+                    <div class="step-desc">colab.research.google.com → Login Gmail</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-title">New Notebook</div>
+                    <div class="step-desc">File → New notebook</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div class="step-title">Shortcut</div>
+                    <div class="step-desc">Shift+Enter = run cell</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">4</div>
+                    <div class="step-title">Auto-save</div>
+                    <div class="step-desc">Google Drive → Colab Notebooks</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">5</div>
+                    <div class="step-title">Free GPU</div>
+                    <div class="step-desc">Runtime → Change runtime → T4 GPU</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 4 — INSTALL DUCKDB
+         ========================================== -->
+    <section class="slide" data-slide="3">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Setup</p>
+            <h2 class="reveal">Install DuckDB di Colab</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># Cell 1: Install</span>
+!pip install duckdb polars pyarrow -q
+
+<span class="cm"># Cell 2: Import</span>
+<span class="kw">import</span> duckdb, time, os
+
+<span class="cm"># Cell 3: Koneksi</span>
+con = duckdb.<span class="fn">connect</span>()
+
+<span class="cm"># Cell 4: Test</span>
+con.<span class="fn">sql</span>(<span class="str">"SELECT 'DuckDB Ready!' AS status"</span>).<span class="fn">show</span>()</code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Selesai dalam 3 detik!</strong> Bandingkan dengan Spark yang butuh 5-10 menit setup.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 5 — TIPS COLAB
+         ========================================== -->
+    <section class="slide" data-slide="4">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Tips</p>
+            <h2 class="reveal">Tips Google Colab untuk Mahasiswa</h2>
+            <ul class="content-list reveal">
+                <li>Data <code>/content/</code> <strong>HILANG</strong> saat disconnect — simpan ke Drive!</li>
+                <li>Mount Drive: <code>from google.colab import drive; drive.mount('/content/drive')</code></li>
+                <li>Upload file: klik folder icon di sidebar → Upload</li>
+                <li>Pre-installed: pandas, numpy, matplotlib, scikit-learn</li>
+                <li>Jangan idle &gt; 90 menit — auto disconnect</li>
+                <li>Runtime restart = semua variabel hilang</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 6 — SECTION: TEORI
+         ========================================== -->
+    <section class="slide section-divider" data-slide="5">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 2</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Teori &<br>Konsep</h2>
+            <div class="section-num">02</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 7 — EVOLUSI BIG DATA
+         ========================================== -->
+    <section class="slide" data-slide="6">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Sejarah</p>
+            <h2 class="reveal">Evolusi Teknologi Big Data</h2>
+            <div class="steps reveal">
+                <div class="step">
+                    <div class="step-num" style="font-size: clamp(0.9rem, 1.5vw, 1.3rem);">2006–2012</div>
+                    <div class="step-title">Era Hadoop</div>
+                    <div class="step-desc">Google MapReduce → Hadoop (HDFS + MapReduce). Butuh cluster server, tim DevOps besar.</div>
+                </div>
+                <div class="step">
+                    <div class="step-num" style="font-size: clamp(0.9rem, 1.5vw, 1.3rem);">2012–2020</div>
+                    <div class="step-title">Era Spark</div>
+                    <div class="step-desc">10-100x lebih cepat (in-memory). Masih butuh cluster, JVM, berat di Colab.</div>
+                </div>
+                <div class="step">
+                    <div class="step-num" style="font-size: clamp(0.9rem, 1.5vw, 1.3rem);">2020–Now</div>
+                    <div class="step-title">Era Modern Data Stack</div>
+                    <div class="step-desc">Cloud-native (BigQuery, Snowflake). DuckDB, Polars — zero setup, super cepat.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 8 — VOLUME DATA
+         ========================================== -->
+    <section class="slide" data-slide="7">
+        <div class="accent-bar"></div>
+        <div class="bg-number">!</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Fakta</p>
+            <h2 class="reveal">Volume Data Kehidupan Sehari-hari</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>GoJek/Grab</h4>
+                    <p>~8 juta order/hari di Indonesia</p>
+                </div>
+                <div class="info-card">
+                    <h4>Tokopedia</h4>
+                    <p>Ratusan juta transaksi/bulan</p>
+                </div>
+                <div class="info-card">
+                    <h4>Instagram</h4>
+                    <p>95 juta foto/video di-upload per hari</p>
+                </div>
+                <div class="info-card">
+                    <h4>YouTube</h4>
+                    <p>500 jam video di-upload setiap MENIT</p>
+                </div>
+                <div class="info-card">
+                    <h4>WhatsApp</h4>
+                    <p>100 miliar pesan/hari di seluruh dunia</p>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Semua ini tidak bisa diproses Excel atau Pandas!</strong> Butuh Big Data tools.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 9 — SPARK VS DUCKDB
+         ========================================== -->
+    <section class="slide" data-slide="8">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Perbandingan</p>
+            <h2 class="reveal">Spark di Colab vs DuckDB</h2>
+            <div class="comparison reveal">
+                <div class="comparison-col alt">
+                    <h3>Apache Spark</h3>
+                    <ul>
+                        <li>Setup 5–10 menit, sering gagal</li>
+                        <li>Startup PySpark: 30–60 detik</li>
+                        <li>Query 5M baris: 1–3 menit</li>
+                        <li>Sering Out-of-Memory</li>
+                        <li>Error JVM tidak jelas</li>
+                        <li>Butuh 4–8 GB RAM</li>
+                    </ul>
+                </div>
+                <div class="comparison-col">
+                    <h3>DuckDB</h3>
+                    <ul>
+                        <li>pip install duckdb (3 detik)</li>
+                        <li>Zero startup time</li>
+                        <li>Query 5M baris: &lt; 1 detik</li>
+                        <li>Sangat hemat memory</li>
+                        <li>Error message jelas</li>
+                        <li>Butuh &lt; 500 MB RAM</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Fokus KONSEP, bukan infrastruktur!</strong></p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 10 — UNIVERSITAS TOP
+         ========================================== -->
+    <section class="slide" data-slide="9">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Tren Global</p>
+            <h2 class="reveal">Universitas Top Sudah Beralih</h2>
+            <ul class="content-list reveal">
+                <li><strong>UC Berkeley Data 101:</strong> Spark → BigQuery & Snowflake (paper ACM)</li>
+                <li><strong>MIT 6.S079:</strong> Tambah RAG, embeddings, LLM ke kurikulum Big Data</li>
+                <li><strong>Harvard CS265 (2026):</strong> Tambah NoSQL, LLM, RAG di Big Data & AI Systems</li>
+                <li><strong>Stanford:</strong> Menghentikan CS245 Data-Intensive Systems (2024)</li>
+                <li><strong>CMU 15-445/645:</strong> Tambah vector indexes untuk AI workloads</li>
+            </ul>
+            <div class="tip-box reveal">
+                <p><strong>Kita belajar KONSEP SAMA dengan tools lebih modern!</strong></p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 11 — APA ITU DUCKDB
+         ========================================== -->
+    <section class="slide" data-slide="10">
+        <div class="accent-bar"></div>
+        <div class="bg-number">&#9671;</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Konsep Inti</p>
+            <h2 class="reveal">Apa Itu DuckDB?</h2>
+            <p class="reveal" style="max-width: 600px; margin-bottom: var(--content-gap);">Database analitik <strong>in-process</strong> — jalan DI DALAM Python. Seperti SQLite untuk transaksi, DuckDB untuk analytics.</p>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>Columnar Storage</h4>
+                    <p>Hanya baca kolom yang di-SELECT</p>
+                </div>
+                <div class="info-card">
+                    <h4>Multi-threaded</h4>
+                    <p>Otomatis pakai SEMUA CPU core</p>
+                </div>
+                <div class="info-card">
+                    <h4>Query File Langsung</h4>
+                    <p>CSV, Parquet, JSON tanpa import</p>
+                </div>
+                <div class="info-card">
+                    <h4>SQL Standard</h4>
+                    <p>GROUP BY, Window, CTE, QUALIFY</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 12 — OLAP vs OLTP
+         ========================================== -->
+    <section class="slide" data-slide="11">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Arsitektur</p>
+            <h2 class="reveal">OLAP vs OLTP</h2>
+            <div class="comparison reveal">
+                <div class="comparison-col alt">
+                    <h3>OLTP (Transactional)</h3>
+                    <ul>
+                        <li>INSERT, UPDATE, DELETE per baris</li>
+                        <li>Aplikasi: e-commerce, perbankan</li>
+                        <li>Row-based storage</li>
+                        <li>Contoh: MySQL, PostgreSQL</li>
+                        <li>Ratusan ribu transaksi/detik</li>
+                    </ul>
+                </div>
+                <div class="comparison-col">
+                    <h3>OLAP (Analytical)</h3>
+                    <ul>
+                        <li>SELECT, GROUP BY, JOIN massal</li>
+                        <li>Analisis: dashboard, reporting</li>
+                        <li>Columnar storage</li>
+                        <li>Contoh: DuckDB, BigQuery</li>
+                        <li>Miliar baris dalam detik</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 13 — COLUMNAR VS ROW
+         ========================================== -->
+    <section class="slide" data-slide="12">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Storage</p>
+            <h2 class="reveal">Columnar vs Row Storage</h2>
+            <div class="comparison reveal">
+                <div class="comparison-col alt">
+                    <h3>Row-based (CSV, MySQL)</h3>
+                    <ul>
+                        <li>Data disimpan per BARIS</li>
+                        <li>[Andi, Jakarta, 25000]</li>
+                        <li>[Budi, Bandung, 18000]</li>
+                        <li>SELECT AVG(tarif) → Baca SEMUA kolom!</li>
+                        <li>Buang-buang I/O</li>
+                    </ul>
+                </div>
+                <div class="comparison-col">
+                    <h3>Columnar (Parquet, DuckDB)</h3>
+                    <ul>
+                        <li>Data disimpan per KOLOM</li>
+                        <li>nama: [Andi, Budi]</li>
+                        <li>tarif: [25000, 18000]</li>
+                        <li>SELECT AVG(tarif) → Baca tarif SAJA!</li>
+                        <li>5-10x lebih cepat</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 14 — PARQUET VS CSV
+         ========================================== -->
+    <section class="slide" data-slide="13">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Format Data</p>
+            <h2 class="reveal">Parquet vs CSV</h2>
+            <table class="data-table reveal">
+                <thead>
+                    <tr><th>Aspek</th><th>CSV</th><th>Parquet</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Format</td><td>Text, human-readable</td><td>Binary, columnar</td></tr>
+                    <tr><td>Kompresi</td><td>Tidak ada</td><td>Snappy/Zstd (otomatis)</td></tr>
+                    <tr><td>Tipe Data</td><td>Tidak ada (semua string)</td><td>Typed (int, float, date)</td></tr>
+                    <tr><td>Ukuran (10M rows)</td><td>~800 MB</td><td>~120 MB (6.7x kecil)</td></tr>
+                    <tr><td>Read+Query</td><td>3.2 detik</td><td>0.3 detik (10x cepat)</td></tr>
+                </tbody>
+            </table>
+            <div class="tip-box reveal">
+                <p><strong>Parquet = standar industri.</strong> Dipakai BigQuery, Snowflake, Databricks, Spark, AWS Athena.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 15 — VECTORIZED EXECUTION
+         ========================================== -->
+    <section class="slide" data-slide="14">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Performa</p>
+            <h2 class="reveal">Vectorized Execution & Optimasi</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>Vectorized Processing</h4>
+                    <p>Proses data dalam batch (vektor), bukan satu per satu. Memanfaatkan SIMD CPU modern.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Predicate Pushdown</h4>
+                    <p>Filter diterapkan SEBELUM baca data. Hanya baca data yang lolos filter.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Projection Pushdown</h4>
+                    <p>Hanya baca KOLOM yang dibutuhkan. SELECT nama → skip kolom lain.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Parallel Execution</h4>
+                    <p>Otomatis gunakan semua CPU core untuk query besar.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 16 — SECTION: PRAKTIKUM
+         ========================================== -->
+    <section class="slide section-divider" data-slide="15">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 3</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Praktikum</h2>
+            <div class="section-num">03</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 17 — GENERATE DATA
+         ========================================== -->
+    <section class="slide" data-slide="16">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 1</p>
+            <h2 class="reveal">Generate 10 Juta Baris GoRide</h2>
+            <div class="code-block reveal">
+                <code><span class="kw">CREATE TABLE</span> trips <span class="kw">AS</span>
+<span class="kw">WITH</span> rng <span class="kw">AS</span> (
+  <span class="kw">SELECT</span> row_number() <span class="kw">OVER</span>() <span class="kw">AS</span> rn,
+    random() <span class="kw">AS</span> r_kota, random() <span class="kw">AS</span> r_layanan,
+    random() <span class="kw">AS</span> r_tarif, random() <span class="kw">AS</span> r_tarif_val,
+    random() <span class="kw">AS</span> r_status, random() <span class="kw">AS</span> r_waktu1,
+    random() <span class="kw">AS</span> r_waktu2, random() <span class="kw">AS</span> r_rating
+  <span class="kw">FROM</span> <span class="fn">generate_series</span>(<span class="num">1</span>, <span class="num">10000000</span>)
+)
+<span class="kw">SELECT</span>
+  <span class="str">'TRIP-'</span> || <span class="fn">LPAD</span>(rn::<span class="kw">VARCHAR</span>, <span class="num">9</span>, <span class="str">'0'</span>) <span class="kw">AS</span> trip_id,
+  <span class="kw">TIMESTAMP</span> <span class="str">'2025-01-01'</span> + <span class="kw">INTERVAL</span> (r_waktu1*<span class="num">90</span>) <span class="kw">DAY</span>
+    + <span class="kw">INTERVAL</span> (r_waktu2*<span class="num">24</span>) <span class="kw">HOUR</span> <span class="kw">AS</span> waktu_pesan,
+  <span class="kw">CASE WHEN</span> r_kota &lt; <span class="num">0.28</span> <span class="kw">THEN</span> <span class="str">'Jakarta'</span>
+       <span class="kw">WHEN</span> r_kota &lt; <span class="num">0.43</span> <span class="kw">THEN</span> <span class="str">'Surabaya'</span>
+       <span class="kw">WHEN</span> r_kota &lt; <span class="num">0.55</span> <span class="kw">THEN</span> <span class="str">'Bandung'</span>
+       <span class="kw">WHEN</span> r_kota &lt; <span class="num">0.64</span> <span class="kw">THEN</span> <span class="str">'Medan'</span>
+       <span class="kw">ELSE</span> <span class="str">'Semarang'</span> <span class="kw">END AS</span> kota,
+  <span class="kw">CASE WHEN</span> r_layanan &lt; <span class="num">0.35</span> <span class="kw">THEN</span> <span class="str">'GoRide'</span>
+       <span class="kw">WHEN</span> r_layanan &lt; <span class="num">0.58</span> <span class="kw">THEN</span> <span class="str">'GoCar'</span>
+       <span class="kw">WHEN</span> r_layanan &lt; <span class="num">0.78</span> <span class="kw">THEN</span> <span class="str">'GoFood'</span>
+       <span class="kw">ELSE</span> <span class="str">'GoSend'</span> <span class="kw">END AS</span> layanan,
+  <span class="fn">ROUND</span>(<span class="kw">CASE WHEN</span> r_tarif &lt; <span class="num">0.35</span>
+    <span class="kw">THEN</span> <span class="num">7000</span> + r_tarif_val * <span class="num">43000</span>
+    <span class="kw">ELSE</span> <span class="num">15000</span> + r_tarif_val * <span class="num">85000</span>
+  <span class="kw">END</span>, -<span class="num">2</span>) <span class="kw">AS</span> tarif,
+  <span class="kw">CASE WHEN</span> r_rating &lt; <span class="num">0.14</span> <span class="kw">THEN</span> <span class="num">3</span>
+       <span class="kw">WHEN</span> r_rating &lt; <span class="num">0.38</span> <span class="kw">THEN</span> <span class="num">4</span>
+       <span class="kw">ELSE</span> <span class="num">5</span> <span class="kw">END AS</span> rating,
+  <span class="kw">CASE WHEN</span> r_status &lt; <span class="num">0.84</span> <span class="kw">THEN</span> <span class="str">'completed'</span>
+       <span class="kw">ELSE</span> <span class="str">'cancelled'</span> <span class="kw">END AS</span> status
+<span class="kw">FROM</span> rng</code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>10 juta baris dalam ~3 detik!</strong> CTE + random() per kolom → distribusi akurat. Tanpa CTE, distribusi miring!</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 18 — SQL GROUP BY
+         ========================================== -->
+    <section class="slide" data-slide="17">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">SQL</p>
+            <h2 class="reveal">GROUP BY: Performa per Kota</h2>
+            <div class="code-block reveal">
+                <code><span class="kw">SELECT</span> kota,
+  <span class="fn">COUNT</span>(*) <span class="kw">AS</span> total_trip,
+  <span class="fn">ROUND</span>(<span class="fn">AVG</span>(tarif)) <span class="kw">AS</span> avg_tarif,
+  <span class="fn">ROUND</span>(<span class="fn">SUM</span>(tarif) / <span class="num">1e9</span>, <span class="num">2</span>) <span class="kw">AS</span> revenue_miliar,
+  <span class="fn">ROUND</span>(<span class="fn">AVG</span>(rating), <span class="num">2</span>) <span class="kw">AS</span> avg_rating,
+  <span class="fn">ROUND</span>(<span class="fn">AVG</span>(jarak_km), <span class="num">1</span>) <span class="kw">AS</span> avg_jarak,
+  <span class="fn">ROUND</span>(<span class="fn">COUNT</span>(*) <span class="kw">FILTER</span> (<span class="kw">WHERE</span> status = <span class="str">'completed'</span>)
+    * <span class="num">100.0</span> / <span class="fn">COUNT</span>(*), <span class="num">1</span>) <span class="kw">AS</span> completion_pct
+<span class="kw">FROM</span> trips
+<span class="kw">GROUP BY</span> kota
+<span class="kw">ORDER BY</span> revenue_miliar <span class="kw">DESC</span></code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>10M baris &lt; 0.1 detik!</strong> Insight: Jakarta revenue tertinggi (~28%), FILTER clause hitung completion rate tanpa subquery.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 19 — WINDOW FUNCTIONS
+         ========================================== -->
+    <section class="slide" data-slide="18">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">SQL</p>
+            <h2 class="reveal">Window Functions: Trend Harian</h2>
+            <div class="code-block reveal">
+                <code><span class="kw">WITH</span> harian <span class="kw">AS</span> (
+  <span class="kw">SELECT</span> waktu_pesan::<span class="kw">DATE</span> <span class="kw">AS</span> tgl,
+    <span class="fn">COUNT</span>(*) <span class="kw">AS</span> trips,
+    <span class="fn">ROUND</span>(<span class="fn">SUM</span>(tarif) / <span class="num">1e6</span>, <span class="num">1</span>) <span class="kw">AS</span> revenue_juta
+  <span class="kw">FROM</span> trips <span class="kw">WHERE</span> status = <span class="str">'completed'</span>
+  <span class="kw">GROUP BY</span> tgl
+)
+<span class="kw">SELECT</span> tgl, trips, revenue_juta,
+  <span class="cm">-- Moving Average 7 hari</span>
+  <span class="fn">ROUND</span>(<span class="fn">AVG</span>(revenue_juta) <span class="kw">OVER</span> (
+    <span class="kw">ORDER BY</span> tgl <span class="kw">ROWS BETWEEN</span> <span class="num">6</span> <span class="kw">PRECEDING
+    AND CURRENT ROW</span>), <span class="num">1</span>) <span class="kw">AS</span> ma7,
+  <span class="cm">-- Delta dari hari sebelumnya</span>
+  <span class="fn">ROUND</span>(revenue_juta - <span class="fn">LAG</span>(revenue_juta)
+    <span class="kw">OVER</span> (<span class="kw">ORDER BY</span> tgl), <span class="num">1</span>) <span class="kw">AS</span> delta,
+  <span class="cm">-- Ranking revenue</span>
+  <span class="fn">RANK</span>() <span class="kw">OVER</span> (<span class="kw">ORDER BY</span> revenue_juta <span class="kw">DESC</span>)
+    <span class="kw">AS</span> rank_rev
+<span class="kw">FROM</span> harian <span class="kw">ORDER BY</span> tgl <span class="kw">LIMIT</span> <span class="num">20</span></code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 20 — CTE
+         ========================================== -->
+    <section class="slide" data-slide="19">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">SQL</p>
+            <h2 class="reveal">CTE: Common Table Expressions</h2>
+            <p class="reveal" style="max-width: 600px; margin-bottom: var(--element-gap);">CTE = "sub-query bernama" yang membuat SQL lebih mudah dibaca dan di-debug.</p>
+            <div class="code-block reveal">
+                <code><span class="kw">WITH</span> kota_stats <span class="kw">AS</span> (
+    <span class="kw">SELECT</span> kota, <span class="fn">COUNT</span>(*) <span class="kw">AS</span> trips,
+           <span class="fn">SUM</span>(tarif) <span class="kw">AS</span> total_rev
+    <span class="kw">FROM</span> trips <span class="kw">GROUP BY</span> kota
+),
+ranked <span class="kw">AS</span> (
+    <span class="kw">SELECT</span> *, <span class="fn">RANK</span>() <span class="kw">OVER</span> (<span class="kw">ORDER BY</span> total_rev <span class="kw">DESC</span>) <span class="kw">AS</span> rnk
+    <span class="kw">FROM</span> kota_stats
+)
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> ranked <span class="kw">WHERE</span> rnk &lt;= <span class="num">5</span></code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 21 — QUERY FILE LANGSUNG
+         ========================================== -->
+    <section class="slide" data-slide="20">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Fitur</p>
+            <h2 class="reveal">Query File Langsung — Tanpa Import!</h2>
+            <div class="code-block reveal">
+                <code><span class="cm">-- Query CSV langsung</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="fn">read_csv</span>(<span class="str">'data.csv'</span>) <span class="kw">LIMIT</span> <span class="num">10</span>
+
+<span class="cm">-- Query Parquet langsung</span>
+<span class="kw">SELECT</span> kota, <span class="fn">COUNT</span>(*)
+<span class="kw">FROM</span> <span class="fn">read_parquet</span>(<span class="str">'trips.parquet'</span>)
+<span class="kw">GROUP BY</span> kota
+
+<span class="cm">-- Query JSON</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="fn">read_json</span>(<span class="str">'events.json'</span>)
+
+<span class="cm">-- Export ke Parquet</span>
+<span class="kw">COPY</span> trips <span class="kw">TO</span> <span class="str">'trips.parquet'</span> (<span class="kw">FORMAT</span> PARQUET)</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 22 — PYTHON INTEGRATION
+         ========================================== -->
+    <section class="slide" data-slide="21">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Integrasi</p>
+            <h2 class="reveal">DuckDB + Python: Zero-Copy</h2>
+            <div class="code-block reveal">
+                <code><span class="kw">import</span> pandas <span class="kw">as</span> pd
+<span class="kw">import</span> duckdb
+
+<span class="cm"># Buat DataFrame Pandas</span>
+df = pd.<span class="fn">DataFrame</span>({<span class="str">'nama'</span>: [<span class="str">'Andi'</span>,<span class="str">'Budi'</span>], <span class="str">'kota'</span>: [<span class="str">'JKT'</span>,<span class="str">'BDG'</span>]})
+
+<span class="cm"># Query DataFrame pakai SQL — zero copy!</span>
+result = duckdb.<span class="fn">sql</span>(<span class="str">"SELECT kota, COUNT(*) FROM df GROUP BY kota"</span>)
+
+<span class="cm"># Konversi balik</span>
+result.<span class="fn">df</span>()     <span class="cm"># → Pandas</span>
+result.<span class="fn">pl</span>()     <span class="cm"># → Polars</span>
+result.<span class="fn">arrow</span>()  <span class="cm"># → Arrow</span></code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 22b — POLA JAM SIBUK
+         ========================================== -->
+    <section class="slide" data-slide="22">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">SQL</p>
+            <h2 class="reveal">Pola Jam Sibuk & Revenue per Layanan</h2>
+            <div class="two-col reveal">
+                <div>
+                    <h3 style="font-size: clamp(0.9rem, 1.4vw, 1.2rem); margin-bottom: var(--element-gap);">Jam Sibuk</h3>
+                    <div class="code-block">
+                        <code><span class="kw">SELECT</span>
+  <span class="fn">EXTRACT</span>(<span class="kw">HOUR FROM</span> waktu_pesan) <span class="kw">AS</span> jam,
+  <span class="fn">COUNT</span>(*) <span class="kw">AS</span> trips,
+  <span class="fn">ROUND</span>(<span class="fn">AVG</span>(tarif)) <span class="kw">AS</span> avg_tarif,
+  <span class="fn">REPEAT</span>(<span class="str">'█'</span>, <span class="fn">GREATEST</span>(
+    (<span class="fn">COUNT</span>(*) / <span class="num">8000</span>)::<span class="kw">INT</span>, <span class="num">1</span>)
+  ) <span class="kw">AS</span> volume
+<span class="kw">FROM</span> trips
+<span class="kw">WHERE</span> status = <span class="str">'completed'</span>
+<span class="kw">GROUP BY</span> jam <span class="kw">ORDER BY</span> jam</code>
+                    </div>
+                </div>
+                <div>
+                    <h3 style="font-size: clamp(0.9rem, 1.4vw, 1.2rem); margin-bottom: var(--element-gap);">Revenue per Layanan</h3>
+                    <div class="code-block">
+                        <code><span class="kw">SELECT</span> layanan,
+  <span class="fn">COUNT</span>(*) <span class="kw">AS</span> trips,
+  <span class="fn">ROUND</span>(<span class="fn">SUM</span>(tarif)/<span class="num">1e9</span>,<span class="num">2</span>) <span class="kw">AS</span> rev_miliar,
+  <span class="fn">ROUND</span>(<span class="fn">AVG</span>(rating), <span class="num">2</span>) <span class="kw">AS</span> avg_rating,
+  <span class="fn">ROUND</span>(<span class="fn">COUNT</span>(*) <span class="kw">FILTER</span> (
+    <span class="kw">WHERE</span> pakai_promo
+  ) * <span class="num">100.0</span> / <span class="fn">COUNT</span>(*), <span class="num">1</span>)
+    <span class="kw">AS</span> promo_pct
+<span class="kw">FROM</span> trips <span class="kw">WHERE</span> status=<span class="str">'completed'</span>
+<span class="kw">GROUP BY</span> layanan
+<span class="kw">ORDER BY</span> rev_miliar <span class="kw">DESC</span></code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 22c — PEMBAYARAN DIGITAL
+         ========================================== -->
+    <section class="slide" data-slide="23">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">SQL</p>
+            <h2 class="reveal">Adopsi Pembayaran Digital vs Cash</h2>
+            <div class="code-block reveal">
+                <code><span class="kw">SELECT</span> metode_bayar,
+  <span class="fn">COUNT</span>(*) <span class="kw">AS</span> transaksi,
+  <span class="fn">ROUND</span>(<span class="fn">COUNT</span>(*) * <span class="num">100.0</span> /
+    <span class="fn">SUM</span>(<span class="fn">COUNT</span>(*)) <span class="kw">OVER</span>(), <span class="num">1</span>) <span class="kw">AS</span> persen,
+  <span class="fn">ROUND</span>(<span class="fn">SUM</span>(tarif) / <span class="num">1e9</span>, <span class="num">2</span>) <span class="kw">AS</span> rev_miliar,
+  <span class="fn">REPEAT</span>(<span class="str">'█'</span>, (<span class="fn">COUNT</span>(*) * <span class="num">40</span> /
+    <span class="fn">SUM</span>(<span class="fn">COUNT</span>(*)) <span class="kw">OVER</span>())::<span class="kw">INT</span>) <span class="kw">AS</span> bar
+<span class="kw">FROM</span> trips <span class="kw">WHERE</span> status = <span class="str">'completed'</span>
+<span class="kw">GROUP BY</span> metode_bayar
+<span class="kw">ORDER BY</span> transaksi <span class="kw">DESC</span></code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Window Function dalam GROUP BY!</strong> SUM(COUNT(*)) OVER() hitung total tanpa subquery. REPEAT() buat bar chart langsung di SQL.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 22d — PARQUET vs CSV BENCHMARK
+         ========================================== -->
+    <section class="slide" data-slide="24">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Format</p>
+            <h2 class="reveal">Parquet vs CSV — Benchmark Lengkap</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># Export ke kedua format</span>
+con.<span class="fn">sql</span>(<span class="str">"COPY trips TO '/tmp/trips.csv' (FORMAT CSV, HEADER)"</span>)
+con.<span class="fn">sql</span>(<span class="str">"COPY trips TO '/tmp/trips.parquet' (FORMAT PARQUET, COMPRESSION ZSTD)"</span>)
+
+<span class="cm"># Bandingkan ukuran</span>
+csv_mb = os.path.<span class="fn">getsize</span>(<span class="str">'/tmp/trips.csv'</span>) / <span class="num">1e6</span>    <span class="cm"># ~800 MB</span>
+pq_mb  = os.path.<span class="fn">getsize</span>(<span class="str">'/tmp/trips.parquet'</span>) / <span class="num">1e6</span> <span class="cm"># ~120 MB</span>
+
+<span class="cm"># Query langsung dari file — tanpa CREATE TABLE!</span>
+con.<span class="fn">sql</span>(<span class="str">"""
+  SELECT kota, AVG(tarif) FROM '/tmp/trips.parquet'
+  GROUP BY kota
+"""</span>)  <span class="cm"># CSV 3.2s → Parquet 0.3s = 10x cepat</span></code>
+            </div>
+            <table class="data-table reveal">
+                <thead><tr><th>Aspek</th><th>CSV</th><th>Parquet (ZSTD)</th><th>Rasio</th></tr></thead>
+                <tbody>
+                    <tr><td>Ukuran</td><td>~800 MB</td><td>~120 MB</td><td>6.7x kecil</td></tr>
+                    <tr><td>Baca + Query</td><td>3.2 detik</td><td>0.3 detik</td><td>10x cepat</td></tr>
+                    <tr><td>Tipe Data</td><td>Semua string</td><td>Typed (int, date)</td><td>-</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 23 — BENCHMARK
+         ========================================== -->
+    <section class="slide" data-slide="25">
+        <div class="accent-bar"></div>
+        <div class="bg-number">&#9889;</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Benchmark</p>
+            <h2 class="reveal">DuckDB vs Pandas — 10M Rows</h2>
+            <div class="reveal" style="margin-top: var(--content-gap);">
+                <p style="font-size: var(--small-size); margin-bottom: var(--element-gap);"><strong>Test 1: GROUP BY Aggregation</strong></p>
+                <div class="bench-row">
+                    <span class="bench-label">Pandas</span>
+                    <div class="bench-bar alt" style="width: 80%"><span>2.1s</span></div>
+                </div>
+                <div class="bench-row">
+                    <span class="bench-label">DuckDB</span>
+                    <div class="bench-bar" style="width: 3%"><span>0.08s</span></div>
+                    <span class="bench-speedup">26x</span>
+                </div>
+                <p style="font-size: var(--small-size); margin: var(--element-gap) 0;"><strong>Test 2: Filter + Sort</strong></p>
+                <div class="bench-row">
+                    <span class="bench-label">Pandas</span>
+                    <div class="bench-bar alt" style="width: 60%"><span>1.5s</span></div>
+                </div>
+                <div class="bench-row">
+                    <span class="bench-label">DuckDB</span>
+                    <div class="bench-bar" style="width: 2%"><span>0.05s</span></div>
+                    <span class="bench-speedup">30x</span>
+                </div>
+                <p style="font-size: var(--small-size); margin: var(--element-gap) 0;"><strong>Test 3: Window Functions</strong></p>
+                <div class="bench-row">
+                    <span class="bench-label">Pandas</span>
+                    <div class="bench-bar alt" style="width: 32%"><span>0.8s</span></div>
+                </div>
+                <div class="bench-row">
+                    <span class="bench-label">DuckDB</span>
+                    <div class="bench-bar" style="width: 1%"><span>0.02s</span></div>
+                    <span class="bench-speedup">40x</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 24 — KENAPA DUCKDB CEPAT
+         ========================================== -->
+    <section class="slide" data-slide="23">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Analisis</p>
+            <h2 class="reveal">Kenapa DuckDB Lebih Cepat?</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>1. Columnar</h4>
+                    <p>Skip kolom tidak diperlukan. Hanya baca data yang di-SELECT.</p>
+                </div>
+                <div class="info-card">
+                    <h4>2. Multi-threaded</h4>
+                    <p>Semua CPU core bekerja paralel secara otomatis.</p>
+                </div>
+                <div class="info-card">
+                    <h4>3. Vectorized</h4>
+                    <p>Proses batch 1024+ values per operasi, bukan satu-satu.</p>
+                </div>
+                <div class="info-card">
+                    <h4>4. C++ Engine</h4>
+                    <p>Native code, tanpa overhead JVM atau Python interpreter.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 25 — SECTION: TIPS & ERROR
+         ========================================== -->
+    <section class="slide section-divider" data-slide="24">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 4</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Tips &<br>Kesalahan Umum</h2>
+            <div class="section-num">04</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 26 — KESALAHAN UMUM
+         ========================================== -->
+    <section class="slide" data-slide="25">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Hindari</p>
+            <h2 class="reveal">Kesalahan Umum</h2>
+            <ul class="content-list reveal">
+                <li><strong>SELECT *</strong> pada data besar → lambat & boros memory. <em>Fix: SELECT hanya kolom yang dibutuhkan</em></li>
+                <li><strong>Data besar di CSV</strong> → lambat & boros disk. <em>Fix: Convert ke Parquet (COPY TO ... FORMAT PARQUET)</em></li>
+                <li><strong>Pandas untuk &gt; 5M baris</strong> → lambat atau OOM. <em>Fix: DuckDB (SQL) atau Polars (Python)</em></li>
+                <li><strong>random() tanpa CTE</strong> → distribusi data miring. <em>Fix: Buat CTE dengan random() per kolom</em></li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 27 — DISKUSI
+         ========================================== -->
+    <section class="slide" data-slide="26">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Refleksi</p>
+            <h2 class="reveal">Diskusi & Pertanyaan</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>Q1</h4>
+                    <p>Kenapa DuckDB lebih cepat dari Pandas? (columnar, multi-threaded, vectorized)</p>
+                </div>
+                <div class="info-card">
+                    <h4>Q2</h4>
+                    <p>Kapan tetap pakai Pandas? (data kecil, familiar, integrasi scikit-learn)</p>
+                </div>
+                <div class="info-card">
+                    <h4>Q3</h4>
+                    <p>Apa bedanya GROUP BY dan Window Function? (GROUP BY mengurangi baris, Window tidak)</p>
+                </div>
+                <div class="info-card">
+                    <h4>Q4</h4>
+                    <p>Kenapa Parquet lebih kecil dari CSV? (columnar compression, typed, binary)</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 28 — RINGKASAN
+         ========================================== -->
+    <section class="slide" data-slide="27">
+        <div class="accent-bar"></div>
+        <div class="bg-number">&#10003;</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Ringkasan</p>
+            <h2 class="reveal">Apa yang Sudah Kita Pelajari</h2>
+            <ul class="content-list reveal">
+                <li><strong>DuckDB</strong> = database analitik modern, zero setup, 20–50x lebih cepat dari Pandas</li>
+                <li><strong>Columnar storage</strong> = baca hanya kolom yang dibutuhkan</li>
+                <li><strong>Parquet</strong> = standar industri (7x lebih kecil, 10x lebih cepat vs CSV)</li>
+                <li><strong>SQL modern</strong> = GROUP BY, Window Functions, CTE, FILTER</li>
+                <li><strong>Query file langsung</strong> = CSV/Parquet/JSON tanpa import</li>
+                <li><strong>Python integration</strong> = zero-copy query Pandas/Polars DataFrames</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 29 — SECTION: TUGAS
+         ========================================== -->
+    <section class="slide section-divider" data-slide="28">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 5</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Studi Kasus<br>& Tugas</h2>
+            <div class="section-num">05</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 30 — TUGAS: NYC TAXI
+         ========================================== -->
+    <section class="slide" data-slide="29">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Studi Kasus</p>
+            <h2 class="reveal">NYC Taxi (60M Baris) + Uber & Lyft</h2>
+            <div class="two-col reveal">
+                <div>
+                    <h3 style="font-size: clamp(0.8rem, 1.2vw, 1rem); margin-bottom: var(--element-gap);">Dataset A: NYC Taxi</h3>
+                    <ul class="content-list">
+                        <li>Load Parquet langsung (tanpa CREATE TABLE)</li>
+                        <li>Rata-rata tarif per jam? Jam paling mahal?</li>
+                        <li>Top 10 zona pickup</li>
+                        <li>Tip &gt; 20%? Per metode bayar?</li>
+                        <li>Moving average 7 hari + RANK</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 style="font-size: clamp(0.8rem, 1.2vw, 1rem); margin-bottom: var(--element-gap);">Dataset B: Uber & Lyft</h3>
+                    <ul class="content-list">
+                        <li>Harga surge Uber vs Lyft</li>
+                        <li>Cuaca vs demand</li>
+                        <li>Window function: rank harian</li>
+                        <li>Export ke Parquet</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Kumpulkan:</strong> notebook (.ipynb) + screenshot hasil di Google Colab</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 31 — REFERENSI
+         ========================================== -->
+    <section class="slide" data-slide="30">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Referensi</p>
+            <h2 class="reveal">Bahan Belajar Mandiri</h2>
+            <ul class="content-list reveal">
+                <li><strong>DuckDB Docs:</strong> duckdb.org/docs/</li>
+                <li><strong>Why DuckDB:</strong> duckdb.org/why_duckdb</li>
+                <li><strong>Tutorial Pemula:</strong> motherduck.com/blog/duckdb-tutorial-for-beginners/</li>
+                <li><strong>NYC Taxi Data:</strong> nyc.gov/site/tlc/about/tlc-trip-record-data.page</li>
+                <li><strong>Buku:</strong> Joe Reis & Matt Housley — Fundamentals of Data Engineering (O'Reilly)</li>
+                <li><strong>Zoomcamp:</strong> github.com/DataTalksClub/data-engineering-zoomcamp</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ===========================================
+         JAVASCRIPT: Presentation Controller
+         =========================================== -->
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.isScrolling = false;
+                this.setupIntersectionObserver();
+                this.setupKeyboardNav();
+                this.setupTouchNav();
+                this.setupWheelNav();
+                this.setupProgressBar();
+                this.setupNavDots();
+            }
+
+            setupIntersectionObserver() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            const idx = Array.from(this.slides).indexOf(entry.target);
+                            if (idx !== -1) {
+                                this.currentSlide = idx;
+                                this.updateProgressBar();
+                                this.updateNavDots();
+                            }
+                        }
+                    });
+                }, { threshold: 0.5 });
+                this.slides.forEach(slide => observer.observe(slide));
+            }
+
+            goToSlide(index) {
+                if (index >= 0 && index < this.slides.length) {
+                    this.slides[index].scrollIntoView({ behavior: 'smooth' });
+                    this.currentSlide = index;
+                    this.updateProgressBar();
+                    this.updateNavDots();
+                }
+            }
+
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.target.getAttribute && e.target.getAttribute('contenteditable') === 'true') return;
+                    switch(e.key) {
+                        case 'ArrowDown': case 'ArrowRight': case ' ': case 'PageDown':
+                            e.preventDefault(); this.goToSlide(this.currentSlide + 1); break;
+                        case 'ArrowUp': case 'ArrowLeft': case 'PageUp':
+                            e.preventDefault(); this.goToSlide(this.currentSlide - 1); break;
+                        case 'Home': e.preventDefault(); this.goToSlide(0); break;
+                        case 'End': e.preventDefault(); this.goToSlide(this.slides.length - 1); break;
+                    }
+                });
+            }
+
+            setupTouchNav() {
+                let startY = 0;
+                document.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; }, { passive: true });
+                document.addEventListener('touchend', (e) => {
+                    const diff = startY - e.changedTouches[0].clientY;
+                    if (Math.abs(diff) > 50) {
+                        diff > 0 ? this.goToSlide(this.currentSlide + 1) : this.goToSlide(this.currentSlide - 1);
+                    }
+                }, { passive: true });
+            }
+
+            setupWheelNav() {
+                let timeout;
+                document.addEventListener('wheel', (e) => {
+                    if (this.isScrolling) return;
+                    this.isScrolling = true;
+                    clearTimeout(timeout);
+                    if (e.deltaY > 30) this.goToSlide(this.currentSlide + 1);
+                    else if (e.deltaY < -30) this.goToSlide(this.currentSlide - 1);
+                    timeout = setTimeout(() => { this.isScrolling = false; }, 800);
+                }, { passive: true });
+            }
+
+            setupProgressBar() {
+                this.progressBar = document.getElementById('progressBar');
+                this.updateProgressBar();
+            }
+
+            updateProgressBar() {
+                const pct = ((this.currentSlide + 1) / this.slides.length) * 100;
+                if (this.progressBar) this.progressBar.style.width = pct + '%';
+            }
+
+            setupNavDots() {
+                const container = document.getElementById('navDots');
+                if (!container) return;
+                this.slides.forEach((_, i) => {
+                    const dot = document.createElement('button');
+                    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+                    dot.addEventListener('click', () => this.goToSlide(i));
+                    dot.setAttribute('aria-label', `Slide ${i + 1}`);
+                    container.appendChild(dot);
+                });
+                this.dots = container.querySelectorAll('.nav-dot');
+            }
+
+            updateNavDots() {
+                if (!this.dots) return;
+                this.dots.forEach((dot, i) => {
+                    dot.classList.toggle('active', i === this.currentSlide);
+                });
+            }
+        }
+
+        /* ===========================================
+           INLINE EDITOR
+           =========================================== */
+        class InlineEditor {
+            constructor() {
+                this.isActive = false;
+                this.storageKey = 'slides-p09-edits';
+                this.loadEdits();
+            }
+
+            toggleEditMode() {
+                this.isActive = !this.isActive;
+                document.body.classList.toggle('editing-active', this.isActive);
+                document.getElementById('editToggle').classList.toggle('active', this.isActive);
+                const editables = document.querySelectorAll('h1,h2,h3,h4,p,li,span,.step-desc,.step-title,.tag');
+                editables.forEach(el => {
+                    if (el.closest('.nav-dots') || el.closest('.edit-toggle')) return;
+                    el.contentEditable = this.isActive ? 'true' : 'false';
+                });
+                if (this.isActive) {
+                    document.addEventListener('input', this._saveHandler = () => this.saveEdits());
+                } else {
+                    document.removeEventListener('input', this._saveHandler);
+                    this.saveEdits();
+                }
+            }
+
+            saveEdits() {
+                const data = {};
+                document.querySelectorAll('.slide').forEach((slide, i) => {
+                    data[i] = slide.innerHTML;
+                });
+                try { localStorage.setItem(this.storageKey, JSON.stringify(data)); } catch(e) {}
+                const notice = document.getElementById('saveNotice');
+                notice.classList.add('show');
+                setTimeout(() => notice.classList.remove('show'), 1200);
+            }
+
+            loadEdits() {
+                try {
+                    const data = JSON.parse(localStorage.getItem(this.storageKey));
+                    if (!data) return;
+                    document.querySelectorAll('.slide').forEach((slide, i) => {
+                        if (data[i]) slide.innerHTML = data[i];
+                    });
+                } catch(e) {}
+            }
+        }
+
+        /* Init */
+        const presentation = new SlidePresentation();
+        const editor = new InlineEditor();
+
+        /* Edit hotzone + toggle */
+        const hotzone = document.getElementById('editHotzone');
+        const editToggle = document.getElementById('editToggle');
+        let hideTimeout = null;
+        hotzone.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); editToggle.classList.add('show'); });
+        hotzone.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+        editToggle.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); });
+        editToggle.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+        editToggle.addEventListener('click', () => editor.toggleEditMode());
+        hotzone.addEventListener('click', () => editor.toggleEditMode());
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) editor.toggleEditMode();
+        });
+    </script>
+</body>
+</html>

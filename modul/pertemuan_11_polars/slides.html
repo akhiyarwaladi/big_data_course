@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pertemuan 11 — Polars: DataFrame Tercepat</title>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;800&family=Nunito:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES — SWISS MODERN THEME
+           =========================================== */
+        :root {
+            --bg-white: #ffffff;
+            --bg-light: #f8f8f8;
+            --text-primary: #0a0a0a;
+            --text-secondary: #555;
+            --text-muted: #888;
+            --accent-red: #ff3300;
+            --accent-red-light: rgba(255, 51, 0, 0.08);
+            --accent-red-glow: rgba(255, 51, 0, 0.15);
+            --grid-color: rgba(0,0,0,0.05);
+            --border-color: rgba(0,0,0,0.1);
+            --font-display: 'Archivo', sans-serif;
+            --font-body: 'Nunito', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration-normal: 0.6s;
+
+            --title-size: clamp(2.2rem, 6vw, 5rem);
+            --h2-size: clamp(1.8rem, 4.5vw, 3.2rem);
+            --h3-size: clamp(1.3rem, 3vw, 2.2rem);
+            --body-size: clamp(1rem, 2vw, 1.5rem);
+            --small-size: clamp(0.85rem, 1.4vw, 1.15rem);
+            --slide-padding: clamp(1rem, 3vw, 2.5rem);
+            --content-gap: clamp(0.5rem, 1.5vw, 1.5rem);
+            --element-gap: clamp(0.25rem, 0.8vw, 0.75rem);
+        }
+
+        /* ===========================================
+           BASE RESET
+           =========================================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ===========================================
+           VIEWPORT FITTING — MANDATORY BASE STYLES
+           =========================================== */
+        html, body { height: 100%; overflow-x: hidden; }
+        html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+
+        .slide {
+            width: 100vw; height: 100vh; height: 100dvh;
+            overflow: hidden; scroll-snap-align: start;
+            display: flex; flex-direction: column; position: relative;
+        }
+        .slide-content {
+            flex: 1; display: flex; flex-direction: column; justify-content: center;
+            max-height: 100%; overflow: hidden;
+            padding: clamp(1.5rem, 3vh, 3rem) var(--slide-padding);
+            padding-left: clamp(2.5rem, 5vw, 5rem);
+            padding-right: clamp(2rem, 4vw, 4rem);
+        }
+        .card, .container, .content-box {
+            max-width: min(95vw, 1200px); max-height: min(90vh, 800px);
+        }
+        .feature-list, .bullet-list { gap: clamp(0.4rem, 1vh, 1rem); }
+        .feature-list li, .bullet-list li { font-size: var(--body-size); line-height: 1.4; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+            gap: clamp(0.5rem, 1.5vw, 1rem);
+        }
+        img, .image-container { max-width: 100%; max-height: min(50vh, 400px); object-fit: contain; }
+
+        @media (max-height: 700px) {
+            :root {
+                --slide-padding: clamp(0.75rem, 2vw, 1.5rem);
+                --content-gap: clamp(0.4rem, 1vw, 0.8rem);
+                --title-size: clamp(1.6rem, 5vw, 3rem);
+                --h2-size: clamp(1.3rem, 3.5vw, 2.2rem);
+                --body-size: clamp(0.85rem, 1.6vw, 1.2rem);
+            }
+        }
+        @media (max-height: 600px) {
+            :root {
+                --slide-padding: clamp(0.5rem, 1.5vw, 1rem);
+                --content-gap: clamp(0.3rem, 0.8vw, 0.6rem);
+                --title-size: clamp(1.4rem, 4.5vw, 2.5rem);
+                --body-size: clamp(0.8rem, 1.4vw, 1.1rem);
+            }
+            .nav-dots, .keyboard-hint, .decorative { display: none; }
+        }
+        @media (max-height: 500px) {
+            :root {
+                --slide-padding: clamp(0.4rem, 1.5vw, 0.8rem);
+                --title-size: clamp(1.2rem, 4vw, 2rem);
+                --h2-size: clamp(1rem, 3vw, 1.5rem);
+                --body-size: clamp(0.75rem, 1.2vw, 1rem);
+            }
+        }
+        @media (max-width: 600px) {
+            :root { --title-size: clamp(1.5rem, 8vw, 3rem); }
+            .grid { grid-template-columns: 1fr; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.2s !important;
+            }
+            html { scroll-behavior: auto; }
+        }
+
+        /* ===========================================
+           SWISS MODERN — GRID BACKGROUND
+           =========================================== */
+        .slide::before {
+            content: '';
+            position: absolute; inset: 0;
+            background-image:
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: clamp(30px, 5vw, 60px) clamp(30px, 5vw, 60px);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .slide > * { position: relative; z-index: 1; }
+
+        /* ===========================================
+           ACCENT BAR (left edge)
+           =========================================== */
+        .accent-bar {
+            position: absolute; left: 0; top: 0; bottom: 0;
+            width: clamp(4px, 0.5vw, 6px);
+            background: var(--accent-red);
+            z-index: 2;
+        }
+
+        /* ===========================================
+           TYPOGRAPHY
+           =========================================== */
+        body { font-family: var(--font-body); color: var(--text-primary); background: var(--bg-white); }
+
+        h1, h2, h3 { font-family: var(--font-display); font-weight: 800; line-height: 1.1; }
+        h1 { font-size: var(--title-size); }
+        h2 { font-size: var(--h2-size); margin-bottom: var(--content-gap); }
+        h3 { font-size: var(--h3-size); }
+        p, li { font-size: var(--body-size); line-height: 1.6; color: var(--text-secondary); }
+        .highlight { color: var(--accent-red); }
+        .tag-label {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(0.8rem, 1.3vw, 1.1rem);
+            color: var(--accent-red); text-transform: uppercase; letter-spacing: 0.2em;
+            margin-bottom: var(--element-gap);
+        }
+
+        /* ===========================================
+           LARGE BACKGROUND NUMBER
+           =========================================== */
+        .bg-number {
+            position: absolute;
+            right: clamp(1rem, 4vw, 4rem);
+            top: clamp(0.5rem, 2vh, 2rem);
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(5rem, 15vw, 12rem);
+            color: rgba(0,0,0,0.03);
+            line-height: 1; z-index: 0; pointer-events: none;
+        }
+
+        /* ===========================================
+           SECTION DIVIDER SLIDES
+           =========================================== */
+        .slide.section-divider {
+            background: var(--text-primary);
+        }
+        .slide.section-divider::before {
+            background-image:
+                linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+        }
+        .slide.section-divider .accent-bar { background: var(--accent-red); }
+        .slide.section-divider h2 { color: #fff; }
+        .slide.section-divider .section-num {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(4rem, 12vw, 10rem);
+            color: rgba(255,255,255,0.06);
+            position: absolute;
+            right: clamp(2rem, 6vw, 6rem);
+            bottom: clamp(1rem, 4vh, 4rem);
+        }
+        .slide.section-divider .tag-label { color: var(--accent-red); }
+
+        /* ===========================================
+           TITLE SLIDE
+           =========================================== */
+        .slide.title-slide { background: var(--bg-white); }
+        .title-meta {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+            color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em;
+            margin-bottom: clamp(0.5rem, 1vh, 1rem);
+        }
+        .title-slide h1 {
+            font-size: clamp(2.5rem, 6.5vw, 5.5rem);
+            margin-bottom: clamp(0.5rem, 1.5vh, 1.5rem);
+        }
+        .title-desc {
+            font-size: clamp(1.1rem, 2vw, 1.5rem);
+            color: var(--text-secondary);
+            max-width: 700px; line-height: 1.6;
+            margin-bottom: clamp(0.75rem, 2vh, 1.5rem);
+        }
+        .tags {
+            display: flex; gap: clamp(8px, 1vw, 14px); flex-wrap: wrap;
+        }
+        .tag {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.7rem, 1.1vw, 0.95rem);
+            text-transform: uppercase; letter-spacing: 0.08em;
+            padding: clamp(4px, 0.6vh, 8px) clamp(10px, 1.2vw, 18px);
+            border: 2px solid var(--text-primary);
+            color: var(--text-primary);
+        }
+        .tag.active { background: var(--text-primary); color: var(--bg-white); }
+
+        /* ===========================================
+           CONTENT COMPONENTS
+           =========================================== */
+        /* Comparison columns */
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: clamp(1rem, 3vw, 3rem);
+            margin-top: var(--content-gap);
+        }
+        @media (max-width: 600px) { .comparison { grid-template-columns: 1fr; } }
+        .comparison-col h3 {
+            font-size: clamp(1.1rem, 1.8vw, 1.5rem);
+            margin-bottom: var(--element-gap);
+            padding-bottom: var(--element-gap);
+            border-bottom: 3px solid var(--accent-red);
+        }
+        .comparison-col.alt h3 { border-bottom-color: var(--text-primary); }
+        .comparison-col ul { list-style: none; }
+        .comparison-col li {
+            font-size: clamp(0.9rem, 1.4vw, 1.2rem);
+            padding: clamp(3px, 0.4vh, 6px) 0;
+            padding-left: 1.2em;
+            position: relative;
+        }
+        .comparison-col li::before {
+            content: '→';
+            position: absolute; left: 0;
+            color: var(--accent-red);
+            font-weight: 700;
+        }
+
+        /* Steps */
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+            gap: clamp(0.5rem, 1.5vw, 1.5rem);
+            margin-top: var(--content-gap);
+        }
+        .step {
+            border-left: 3px solid var(--accent-red);
+            padding-left: clamp(0.5rem, 1vw, 1rem);
+        }
+        .step-num {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(1.5rem, 2.5vw, 2.2rem);
+            color: var(--accent-red); line-height: 1;
+        }
+        .step-title {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.9rem, 1.4vw, 1.2rem);
+            color: var(--text-primary);
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin: clamp(2px, 0.3vh, 4px) 0;
+        }
+        .step-desc {
+            font-size: clamp(0.85rem, 1.3vw, 1.1rem);
+            color: var(--text-secondary);
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: #1a1a1a;
+            border-radius: 4px;
+            padding: clamp(0.5rem, 1.5vw, 1.5rem);
+            margin-top: var(--element-gap);
+            overflow-x: auto;
+            max-height: min(45vh, 350px);
+        }
+        .code-block code {
+            font-family: var(--font-mono);
+            font-size: clamp(0.85rem, 1.4vw, 1.15rem);
+            color: #e0e0e0; line-height: 1.5;
+            white-space: pre;
+        }
+        .code-block .kw { color: #ff7b72; }
+        .code-block .fn { color: #d2a8ff; }
+        .code-block .str { color: #a5d6ff; }
+        .code-block .cm { color: #8b949e; }
+        .code-block .num { color: #79c0ff; }
+
+        /* Info cards */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+            gap: clamp(0.5rem, 1vw, 1rem);
+            margin-top: var(--content-gap);
+        }
+        .info-card {
+            padding: clamp(0.5rem, 1.5vw, 1.5rem);
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+        .info-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0;
+            height: 3px; background: var(--accent-red);
+        }
+        .info-card h4 {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(0.95rem, 1.5vw, 1.25rem);
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin-bottom: clamp(2px, 0.5vh, 6px);
+        }
+        .info-card p { font-size: clamp(0.9rem, 1.3vw, 1.15rem); }
+
+        /* Benchmark bars */
+        .bench-row {
+            display: flex; align-items: center;
+            gap: clamp(0.5rem, 1vw, 1rem);
+            margin-bottom: clamp(0.3rem, 0.5vh, 0.5rem);
+        }
+        .bench-label {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+            min-width: clamp(70px, 10vw, 120px);
+            text-align: right;
+        }
+        .bench-bar {
+            height: clamp(28px, 4vh, 40px);
+            background: var(--accent-red);
+            border-radius: 2px;
+            display: flex; align-items: center;
+            padding-left: clamp(6px, 0.8vw, 12px);
+            transition: width 1s var(--ease-out-expo);
+        }
+        .bench-bar.alt { background: var(--text-primary); }
+        .bench-bar span {
+            font-family: var(--font-mono);
+            font-size: clamp(0.75rem, 1.1vw, 1rem);
+            color: #fff; white-space: nowrap;
+            font-weight: 500;
+        }
+        .bench-speedup {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(1rem, 1.5vw, 1.3rem);
+            color: var(--accent-red);
+        }
+
+        /* Bullet list */
+        .content-list {
+            list-style: none;
+            margin-top: var(--element-gap);
+        }
+        .content-list li {
+            padding: clamp(3px, 0.5vh, 6px) 0;
+            padding-left: 1.5em; position: relative;
+            font-size: var(--body-size);
+        }
+        .content-list li::before {
+            content: ''; position: absolute;
+            left: 0; top: clamp(10px, 1.2vh, 14px);
+            width: 8px; height: 3px;
+            background: var(--accent-red);
+        }
+
+        /* Tip/warning box */
+        .tip-box {
+            border-left: 4px solid var(--accent-red);
+            background: var(--accent-red-light);
+            padding: clamp(0.5rem, 1vw, 1rem);
+            margin-top: var(--element-gap);
+        }
+        .tip-box p { font-size: clamp(0.9rem, 1.4vw, 1.2rem); color: var(--text-primary); }
+        .tip-box strong { color: var(--accent-red); }
+
+        /* Table */
+        .data-table {
+            width: 100%; border-collapse: collapse;
+            margin-top: var(--element-gap);
+            font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+        }
+        .data-table th {
+            font-family: var(--font-display); font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            font-size: clamp(0.8rem, 1.2vw, 1.05rem);
+            text-align: left;
+            padding: clamp(6px, 0.8vh, 12px) clamp(8px, 1.2vw, 16px);
+            border-bottom: 2px solid var(--text-primary);
+            color: var(--text-primary);
+        }
+        .data-table td {
+            padding: clamp(5px, 0.7vh, 10px) clamp(8px, 1.2vw, 16px);
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+        .data-table td:first-child { font-weight: 600; color: var(--text-primary); }
+
+        /* Two column layout */
+        .two-col {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: clamp(1rem, 3vw, 3rem);
+            margin-top: var(--content-gap);
+        }
+        @media (max-width: 600px) { .two-col { grid-template-columns: 1fr; } }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal {
+            opacity: 0; transform: translateY(20px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .reveal-left {
+            opacity: 0; transform: translateX(-30px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .slide.visible .reveal,
+        .slide.visible .reveal-left {
+            opacity: 1; transform: translate(0);
+        }
+        .slide.visible .reveal:nth-child(1) { transition-delay: 0.05s; }
+        .slide.visible .reveal:nth-child(2) { transition-delay: 0.1s; }
+        .slide.visible .reveal:nth-child(3) { transition-delay: 0.15s; }
+        .slide.visible .reveal:nth-child(4) { transition-delay: 0.2s; }
+        .slide.visible .reveal:nth-child(5) { transition-delay: 0.25s; }
+        .slide.visible .reveal:nth-child(6) { transition-delay: 0.3s; }
+
+        /* ===========================================
+           PROGRESS BAR
+           =========================================== */
+        .progress-bar {
+            position: fixed; top: 0; left: 0;
+            height: 3px; background: var(--accent-red);
+            z-index: 9999; transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        /* ===========================================
+           NAV DOTS
+           =========================================== */
+        .nav-dots {
+            position: fixed; right: clamp(8px, 1vw, 16px);
+            top: 50%; transform: translateY(-50%);
+            display: flex; flex-direction: column;
+            gap: clamp(4px, 0.5vh, 8px); z-index: 9998;
+        }
+        .nav-dot {
+            width: clamp(6px, 0.5vw, 8px); height: clamp(6px, 0.5vw, 8px);
+            background: var(--border-color);
+            border-radius: 50%; cursor: pointer;
+            transition: all 0.3s ease; border: none; padding: 0;
+        }
+        .nav-dot.active {
+            background: var(--accent-red);
+            transform: scale(1.4);
+        }
+
+        /* ===========================================
+           EDIT MODE (opt-in)
+           =========================================== */
+        .edit-hotzone {
+            position: fixed; top: 0; left: 0;
+            width: 80px; height: 80px;
+            z-index: 10000; cursor: pointer;
+        }
+        .edit-toggle {
+            position: fixed; top: 16px; left: 16px;
+            width: 36px; height: 36px;
+            background: var(--text-primary); color: #fff;
+            border: none; border-radius: 4px;
+            font-size: 16px; cursor: pointer;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 10001;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+        .edit-toggle.active { background: var(--accent-red); }
+        .editing-active [contenteditable="true"] {
+            outline: 2px dashed var(--accent-red-glow);
+            outline-offset: 2px;
+            cursor: text;
+        }
+        .edit-save-notice {
+            position: fixed; bottom: 20px; left: 50%;
+            transform: translateX(-50%);
+            background: var(--text-primary); color: #fff;
+            padding: 8px 20px; border-radius: 4px;
+            font-family: var(--font-body); font-size: 13px;
+            opacity: 0; transition: opacity 0.3s;
+            z-index: 10002; pointer-events: none;
+        }
+        .edit-save-notice.show { opacity: 1; }
+    </style>
+</head>
+<body>
+    <!-- Progress bar -->
+    <div class="progress-bar" id="progressBar"></div>
+    <!-- Nav dots (generated by JS) -->
+    <nav class="nav-dots" id="navDots"></nav>
+    <!-- Edit mode -->
+    <div class="edit-hotzone" id="editHotzone"></div>
+    <button class="edit-toggle" id="editToggle" title="Edit mode (E)">&#9998;</button>
+    <div class="edit-save-notice" id="saveNotice">Tersimpan!</div>
+
+    <!-- ==========================================
+         SLIDE 1 — TITLE
+         ========================================== -->
+    <section class="slide title-slide" data-slide="0">
+        <div class="accent-bar"></div>
+        <div class="bg-number">11</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Pertemuan 11</p>
+            <h1 class="reveal">Polars: DataFrame<br><span class="highlight">Tercepat</span></h1>
+            <p class="title-desc reveal">5-50x lebih cepat dari Pandas. Lazy evaluation. Rust backend, Apache Arrow.</p>
+            <div class="tags reveal">
+                <span class="tag active">Polars</span>
+                <span class="tag">Rust</span>
+                <span class="tag">Arrow</span>
+                <span class="tag">LazyFrame</span>
+                <span class="tag">Gratis</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 2 — SECTION: SETUP
+         ========================================== -->
+    <section class="slide section-divider" data-slide="1">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 1</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Setup &<br>Persiapan</h2>
+            <div class="section-num">01</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 3 — INSTALL & IMPORT
+         ========================================== -->
+    <section class="slide" data-slide="2">
+        <div class="accent-bar"></div>
+        <div class="bg-number">01</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Setup</p>
+            <h2 class="reveal">Install Polars & Persiapan Data</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># Cell 1: Install</span>
+!pip install polars duckdb pyarrow matplotlib -q
+
+<span class="cm"># Cell 2: Import & Cek versi</span>
+<span class="kw">import</span> polars <span class="kw">as</span> pl
+<span class="kw">import</span> duckdb, time
+<span class="fn">print</span>(<span class="str">f"Polars: </span>{pl.<span class="fn">__version__</span>}<span class="str">"</span>)
+
+<span class="cm"># Cell 3: Generate 10M rows dengan DuckDB → Parquet</span>
+con = duckdb.<span class="fn">connect</span>()
+con.<span class="fn">sql</span>(<span class="str">"""
+COPY (
+  SELECT row_number() OVER () AS id,
+    CASE WHEN random()&lt;0.3 THEN 'Jakarta' WHEN random()&lt;0.6 THEN 'Bandung'
+         WHEN random()&lt;0.8 THEN 'Surabaya' ELSE 'Medan' END AS kota,
+    CASE WHEN random()&lt;0.5 THEN 'Ride' ELSE 'Food' END AS layanan,
+    ROUND(5000 + random()*95000, 0)::INT AS tarif,
+    '2024-01-01'::DATE + (random()*364)::INT AS tanggal,
+    ROUND(1 + random()*4, 1) AS rating
+  FROM generate_series(1, 10000000)
+) TO 'trips_10m.parquet' (FORMAT PARQUET)
+"""</span>)
+
+<span class="cm"># Cell 4: Load dengan Polars</span>
+df = pl.<span class="fn">read_parquet</span>(<span class="str">'trips_10m.parquet'</span>)
+<span class="fn">print</span>(df.<span class="fn">shape</span>, df.<span class="fn">head</span>())</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 4 — SECTION: TEORI & KONSEP
+         ========================================== -->
+    <section class="slide section-divider" data-slide="3">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 2</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Teori &<br>Konsep</h2>
+            <div class="section-num">02</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 5 — PANDAS VS POLARS
+         ========================================== -->
+    <section class="slide" data-slide="4">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Perbandingan</p>
+            <h2 class="reveal">Pandas vs Polars</h2>
+            <div class="comparison reveal">
+                <div class="comparison-col alt">
+                    <h3>Pandas (2008)</h3>
+                    <ul>
+                        <li>Backend: NumPy (C)</li>
+                        <li>Single-threaded</li>
+                        <li>Eager execution SAJA</li>
+                        <li>1 GB data &rarr; 5-10 GB RAM</li>
+                        <li>Index-based (df.iloc, df.loc)</li>
+                        <li>Mutable (inplace=True)</li>
+                    </ul>
+                </div>
+                <div class="comparison-col">
+                    <h3>Polars (2021)</h3>
+                    <ul>
+                        <li>Backend: Rust + Apache Arrow</li>
+                        <li>Multi-threaded otomatis</li>
+                        <li>Lazy + Eager evaluation</li>
+                        <li>1 GB data &rarr; ~1.5 GB RAM</li>
+                        <li>Expression API (pl.col())</li>
+                        <li>Immutable (lebih aman)</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Polars bukan "Pandas yang lebih cepat"</strong> — ini paradigma BERBEDA.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 6 — APACHE ARROW
+         ========================================== -->
+    <section class="slide" data-slide="5">
+        <div class="accent-bar"></div>
+        <div class="bg-number">&loz;</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Fondasi</p>
+            <h2 class="reveal">Apache Arrow Memory Format</h2>
+            <p class="reveal" style="max-width: 600px; margin-bottom: var(--content-gap);">Standar memori kolom yang dipakai Polars, DuckDB, Spark, dan 40+ project lain. Data di memori TIDAK perlu di-copy saat berpindah antar library.</p>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>Zero-Copy</h4>
+                    <p>Polars &harr; DuckDB &harr; Spark tanpa copy data. Hemat RAM & waktu.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Columnar</h4>
+                    <p>Data disimpan per kolom, bukan per baris. Ideal untuk analytics.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Strongly Typed</h4>
+                    <p>Int64, Float64, String, Date — tidak ada "object" seperti Pandas.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Interoperable</h4>
+                    <p>Polars → DuckDB → Spark → R: semua pakai format yang SAMA.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 7 — EAGER VS LAZY
+         ========================================== -->
+    <section class="slide" data-slide="6">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Konsep Kunci</p>
+            <h2 class="reveal">Eager vs Lazy Evaluation</h2>
+            <div class="comparison reveal">
+                <div class="comparison-col alt">
+                    <h3>Eager (Pandas/default)</h3>
+                    <ul>
+                        <li>filter &rarr; scan seluruh data (1x)</li>
+                        <li>group_by &rarr; scan seluruh data (2x)</li>
+                        <li>sort &rarr; scan seluruh data (3x)</li>
+                        <li>Total: 3x full scan!</li>
+                        <li>Setiap operasi LANGSUNG dijalankan</li>
+                    </ul>
+                </div>
+                <div class="comparison-col">
+                    <h3>Lazy (Polars LazyFrame)</h3>
+                    <ul>
+                        <li>filter &rarr; catat saja</li>
+                        <li>group_by &rarr; catat saja</li>
+                        <li>sort &rarr; catat saja</li>
+                        <li>.collect() &rarr; OPTIMASI + 1x scan!</li>
+                        <li>Query optimizer menggabungkan operasi</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Predicate pushdown:</strong> filter dipindah ke awal. <strong>Projection pushdown:</strong> hanya baca kolom yang dibutuhkan.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 8 — EXPRESSION API
+         ========================================== -->
+    <section class="slide" data-slide="7">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">API</p>
+            <h2 class="reveal">Expression API — Cara Polars Bekerja</h2>
+            <p class="reveal" style="max-width: 650px; margin-bottom: var(--element-gap);">Polars TIDAK pakai index. Semua operasi menggunakan <strong>Expression</strong> via <code>pl.col()</code>.</p>
+            <div class="code-block reveal">
+                <code><span class="cm"># Pandas style (index-based)</span>
+df[df[<span class="str">'kota'</span>] == <span class="str">'Jakarta'</span>][<span class="str">'tarif'</span>].<span class="fn">mean</span>()
+
+<span class="cm"># Polars style (expression-based)</span>
+df.<span class="fn">filter</span>(pl.<span class="fn">col</span>(<span class="str">'kota'</span>) == <span class="str">'Jakarta'</span>).<span class="fn">select</span>(pl.<span class="fn">col</span>(<span class="str">'tarif'</span>).<span class="fn">mean</span>())
+
+<span class="cm"># Tambah kolom baru</span>
+df.<span class="fn">with_columns</span>(
+    (pl.<span class="fn">col</span>(<span class="str">'tarif'</span>) * <span class="num">1.11</span>).<span class="fn">alias</span>(<span class="str">'tarif_ppn'</span>),
+    pl.<span class="fn">col</span>(<span class="str">'rating'</span>).<span class="fn">round</span>(<span class="num">0</span>).<span class="fn">alias</span>(<span class="str">'rating_bulat'</span>)
+)
+
+<span class="cm"># Group by + Aggregation</span>
+df.<span class="fn">group_by</span>(<span class="str">'kota'</span>).<span class="fn">agg</span>(
+    pl.<span class="fn">col</span>(<span class="str">'tarif'</span>).<span class="fn">mean</span>().<span class="fn">alias</span>(<span class="str">'avg_tarif'</span>),
+    pl.<span class="fn">col</span>(<span class="str">'tarif'</span>).<span class="fn">sum</span>().<span class="fn">alias</span>(<span class="str">'total_rev'</span>),
+    pl.<span class="fn">len</span>().<span class="fn">alias</span>(<span class="str">'jumlah'</span>)
+)</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 9 — SCAN VS READ PARQUET
+         ========================================== -->
+    <section class="slide" data-slide="8">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Performa</p>
+            <h2 class="reveal">scan_parquet vs read_parquet</h2>
+            <div class="comparison reveal">
+                <div class="comparison-col alt">
+                    <h3>read_parquet (Eager)</h3>
+                    <ul>
+                        <li>Baca SELURUH file ke memori</li>
+                        <li>10M rows = 800 MB RAM langsung</li>
+                        <li>Baru kemudian filter/select</li>
+                        <li>Seperti baca seluruh buku</li>
+                    </ul>
+                </div>
+                <div class="comparison-col">
+                    <h3>scan_parquet (Lazy)</h3>
+                    <ul>
+                        <li>Hanya baca METADATA dulu</li>
+                        <li>Filter → baca baris yang lolos SAJA</li>
+                        <li>Select → baca kolom yang dipilih SAJA</li>
+                        <li>Seperti baca daftar isi, lalu halaman tertentu</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="code-block reveal">
+                <code><span class="cm"># Lazy: hanya baca kolom kota & tarif, hanya baris Jakarta</span>
+result = (
+    pl.<span class="fn">scan_parquet</span>(<span class="str">'trips_10m.parquet'</span>)
+    .<span class="fn">filter</span>(pl.<span class="fn">col</span>(<span class="str">'kota'</span>) == <span class="str">'Jakarta'</span>)
+    .<span class="fn">select</span>(<span class="str">'kota'</span>, <span class="str">'tarif'</span>)
+    .<span class="fn">collect</span>()
+)</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 10 — RFM CONCEPT
+         ========================================== -->
+    <section class="slide" data-slide="9">
+        <div class="accent-bar"></div>
+        <div class="bg-number">RFM</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Studi Kasus</p>
+            <h2 class="reveal">RFM: Segmentasi Pelanggan</h2>
+            <p class="reveal" style="max-width: 650px; margin-bottom: var(--content-gap);">Teknik NYATA yang dipakai Tokopedia, Shopee, GoJek untuk mengelompokkan pelanggan.</p>
+            <div class="steps reveal">
+                <div class="step">
+                    <div class="step-num">R</div>
+                    <div class="step-title">Recency</div>
+                    <div class="step-desc">Kapan terakhir beli? Semakin baru = semakin baik. Selisih hari dari transaksi terakhir.</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">F</div>
+                    <div class="step-title">Frequency</div>
+                    <div class="step-desc">Seberapa sering beli? Pelanggan loyal beli berkali-kali dalam sebulan.</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">M</div>
+                    <div class="step-title">Monetary</div>
+                    <div class="step-desc">Berapa total belanja? High-value customer belanja lebih banyak.</div>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Score 1-5 per metrik</strong> (qcut). R=5,F=5,M=5 → VIP. R=1,F=1,M=1 → At Risk / Churned.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 11 — RFM SEGMENTATION TABLE
+         ========================================== -->
+    <section class="slide" data-slide="10">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Segmentasi</p>
+            <h2 class="reveal">RFM Score &rarr; Segmen Pelanggan</h2>
+            <table class="data-table reveal">
+                <thead>
+                    <tr><th>Segmen</th><th>R</th><th>F</th><th>M</th><th>Aksi</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>VIP / Champions</td><td>5</td><td>5</td><td>5</td><td>Loyalty reward, early access</td></tr>
+                    <tr><td>Loyal Customer</td><td>3-5</td><td>4-5</td><td>3-5</td><td>Upsell, referral program</td></tr>
+                    <tr><td>Potential Loyalist</td><td>4-5</td><td>2-3</td><td>2-3</td><td>Engage lebih, membership</td></tr>
+                    <tr><td>New Customer</td><td>5</td><td>1</td><td>1-2</td><td>Welcome series, onboarding</td></tr>
+                    <tr><td>At Risk</td><td>1-2</td><td>3-5</td><td>3-5</td><td>Win-back campaign, diskon</td></tr>
+                    <tr><td>Hibernating</td><td>1</td><td>1</td><td>1</td><td>Reactivation atau let go</td></tr>
+                </tbody>
+            </table>
+            <div class="tip-box reveal">
+                <p><strong>Insight bisnis:</strong> 20% pelanggan VIP biasanya menghasilkan 80% revenue (Pareto principle).</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 12 — COHORT ANALYSIS CONCEPT
+         ========================================== -->
+    <section class="slide" data-slide="11">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Konsep</p>
+            <h2 class="reveal">Cohort Analysis: Pantau Retensi</h2>
+            <p class="reveal" style="max-width: 650px; margin-bottom: var(--content-gap);">Kelompokkan pelanggan berdasarkan <strong>bulan pertama kali beli</strong> (cohort), lalu track berapa % yang masih aktif di bulan-bulan berikutnya.</p>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>Cohort</h4>
+                    <p>Kelompok pelanggan berdasarkan bulan pertama transaksi (Jan, Feb, Mar...)</p>
+                </div>
+                <div class="info-card">
+                    <h4>Retention Rate</h4>
+                    <p>% pelanggan yang kembali membeli di bulan ke-1, ke-2, ke-3...</p>
+                </div>
+                <div class="info-card">
+                    <h4>Cohort Period</h4>
+                    <p>Selisih bulan antara bulan pertama dan bulan transaksi berikutnya</p>
+                </div>
+                <div class="info-card">
+                    <h4>Heatmap</h4>
+                    <p>Visualisasi retention — warna gelap = retensi tinggi, terang = rendah</p>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>GoJek benchmark:</strong> retensi bulan ke-1 = 40-50%, bulan ke-6 = 15-20% dianggap BAGUS.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 13 — SECTION: PRAKTIKUM
+         ========================================== -->
+    <section class="slide section-divider" data-slide="12">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 3</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Praktikum</h2>
+            <div class="section-num">03</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 14 — BASIC OPERATIONS
+         ========================================== -->
+    <section class="slide" data-slide="13">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 1</p>
+            <h2 class="reveal">Operasi Dasar Polars</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># Filter</span>
+jkt = df.<span class="fn">filter</span>(pl.<span class="fn">col</span>(<span class="str">'kota'</span>) == <span class="str">'Jakarta'</span>)
+
+<span class="cm"># Select kolom tertentu</span>
+df.<span class="fn">select</span>(<span class="str">'kota'</span>, <span class="str">'tarif'</span>, <span class="str">'rating'</span>)
+
+<span class="cm"># Sort</span>
+df.<span class="fn">sort</span>(<span class="str">'tarif'</span>, descending=<span class="kw">True</span>).<span class="fn">head</span>(<span class="num">10</span>)
+
+<span class="cm"># Group by + Aggregation</span>
+df.<span class="fn">group_by</span>(<span class="str">'kota'</span>).<span class="fn">agg</span>(
+    pl.<span class="fn">col</span>(<span class="str">'tarif'</span>).<span class="fn">mean</span>().<span class="fn">alias</span>(<span class="str">'avg_tarif'</span>),
+    pl.<span class="fn">col</span>(<span class="str">'tarif'</span>).<span class="fn">sum</span>().<span class="fn">alias</span>(<span class="str">'total_rev'</span>),
+    pl.<span class="fn">len</span>().<span class="fn">alias</span>(<span class="str">'jumlah'</span>)
+).<span class="fn">sort</span>(<span class="str">'total_rev'</span>, descending=<span class="kw">True</span>)
+
+<span class="cm"># With columns (tambah kolom)</span>
+df.<span class="fn">with_columns</span>(
+    (pl.<span class="fn">col</span>(<span class="str">'tarif'</span>) * <span class="num">1.11</span>).<span class="fn">alias</span>(<span class="str">'tarif_ppn'</span>)
+)</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 15 — LAZY EVALUATION DEMO
+         ========================================== -->
+    <section class="slide" data-slide="14">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 2</p>
+            <h2 class="reveal">Lazy Evaluation — Demo</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># Lazy: bangun query plan, belum dieksekusi</span>
+lazy_q = (
+    pl.<span class="fn">scan_parquet</span>(<span class="str">'trips_10m.parquet'</span>)
+    .<span class="fn">filter</span>(pl.<span class="fn">col</span>(<span class="str">'kota'</span>) == <span class="str">'Jakarta'</span>)
+    .<span class="fn">filter</span>(pl.<span class="fn">col</span>(<span class="str">'tarif'</span>) > <span class="num">50000</span>)
+    .<span class="fn">group_by</span>(<span class="str">'layanan'</span>)
+    .<span class="fn">agg</span>(
+        pl.<span class="fn">col</span>(<span class="str">'tarif'</span>).<span class="fn">mean</span>().<span class="fn">alias</span>(<span class="str">'avg_tarif'</span>),
+        pl.<span class="fn">len</span>().<span class="fn">alias</span>(<span class="str">'jumlah'</span>)
+    )
+    .<span class="fn">sort</span>(<span class="str">'avg_tarif'</span>, descending=<span class="kw">True</span>)
+)
+
+<span class="cm"># Lihat query plan (SEBELUM eksekusi)</span>
+<span class="fn">print</span>(lazy_q.<span class="fn">explain</span>())
+
+<span class="cm"># Eksekusi! Semua operasi digabung + dioptimasi</span>
+result = lazy_q.<span class="fn">collect</span>()
+<span class="fn">print</span>(result)</code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>.explain()</strong> menunjukkan: FILTER dipush ke bawah, hanya kolom kota/layanan/tarif yang dibaca!</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 16 — RFM IMPLEMENTATION
+         ========================================== -->
+    <section class="slide" data-slide="15">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 3</p>
+            <h2 class="reveal">RFM Implementation dengan Polars</h2>
+            <div class="code-block reveal">
+                <code><span class="kw">import</span> polars <span class="kw">as</span> pl
+<span class="kw">from</span> datetime <span class="kw">import</span> date
+
+<span class="cm"># Hitung RFM per customer (id sebagai customer proxy)</span>
+snapshot = date(<span class="num">2025</span>, <span class="num">1</span>, <span class="num">1</span>)
+rfm = df.<span class="fn">group_by</span>(<span class="str">'id'</span>).<span class="fn">agg</span>(
+    (pl.<span class="fn">lit</span>(snapshot) - pl.<span class="fn">col</span>(<span class="str">'tanggal'</span>).<span class="fn">max</span>()).<span class="fn">dt</span>.<span class="fn">total_days</span>().<span class="fn">alias</span>(<span class="str">'recency'</span>),
+    pl.<span class="fn">len</span>().<span class="fn">alias</span>(<span class="str">'frequency'</span>),
+    pl.<span class="fn">col</span>(<span class="str">'tarif'</span>).<span class="fn">sum</span>().<span class="fn">alias</span>(<span class="str">'monetary'</span>),
+)
+
+<span class="cm"># Score 1-5 dengan qcut</span>
+rfm = rfm.<span class="fn">with_columns</span>(
+    pl.<span class="fn">col</span>(<span class="str">'recency'</span>).<span class="fn">qcut</span>(<span class="num">5</span>, labels=[<span class="str">'5'</span>,<span class="str">'4'</span>,<span class="str">'3'</span>,<span class="str">'2'</span>,<span class="str">'1'</span>],
+        allow_duplicates=<span class="kw">True</span>).<span class="fn">alias</span>(<span class="str">'R'</span>),
+    pl.<span class="fn">col</span>(<span class="str">'frequency'</span>).<span class="fn">qcut</span>(<span class="num">5</span>, labels=[<span class="str">'1'</span>,<span class="str">'2'</span>,<span class="str">'3'</span>,<span class="str">'4'</span>,<span class="str">'5'</span>],
+        allow_duplicates=<span class="kw">True</span>).<span class="fn">alias</span>(<span class="str">'F'</span>),
+    pl.<span class="fn">col</span>(<span class="str">'monetary'</span>).<span class="fn">qcut</span>(<span class="num">5</span>, labels=[<span class="str">'1'</span>,<span class="str">'2'</span>,<span class="str">'3'</span>,<span class="str">'4'</span>,<span class="str">'5'</span>],
+        allow_duplicates=<span class="kw">True</span>).<span class="fn">alias</span>(<span class="str">'M'</span>),
+)
+<span class="fn">print</span>(rfm.<span class="fn">head</span>(<span class="num">10</span>))</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 17 — RFM SEGMENTATION CODE
+         ========================================== -->
+    <section class="slide" data-slide="16">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 3 (lanjutan)</p>
+            <h2 class="reveal">RFM &rarr; Segmen Pelanggan</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># Gabungkan score RFM</span>
+rfm = rfm.<span class="fn">with_columns</span>(
+    (pl.<span class="fn">col</span>(<span class="str">'R'</span>).<span class="fn">cast</span>(pl.String) + pl.<span class="fn">col</span>(<span class="str">'F'</span>).<span class="fn">cast</span>(pl.String)
+     + pl.<span class="fn">col</span>(<span class="str">'M'</span>).<span class="fn">cast</span>(pl.String)).<span class="fn">alias</span>(<span class="str">'rfm_score'</span>)
+)
+
+<span class="cm"># Klasifikasi segmen</span>
+rfm = rfm.<span class="fn">with_columns</span>(
+    pl.<span class="fn">when</span>(
+        (pl.<span class="fn">col</span>(<span class="str">'R'</span>).<span class="fn">cast</span>(pl.Int32) >= <span class="num">4</span>) &amp;
+        (pl.<span class="fn">col</span>(<span class="str">'F'</span>).<span class="fn">cast</span>(pl.Int32) >= <span class="num">4</span>) &amp;
+        (pl.<span class="fn">col</span>(<span class="str">'M'</span>).<span class="fn">cast</span>(pl.Int32) >= <span class="num">4</span>)
+    ).<span class="fn">then</span>(pl.<span class="fn">lit</span>(<span class="str">'VIP'</span>))
+    .<span class="fn">when</span>(
+        (pl.<span class="fn">col</span>(<span class="str">'R'</span>).<span class="fn">cast</span>(pl.Int32) &lt;= <span class="num">2</span>) &amp;
+        (pl.<span class="fn">col</span>(<span class="str">'F'</span>).<span class="fn">cast</span>(pl.Int32) >= <span class="num">3</span>)
+    ).<span class="fn">then</span>(pl.<span class="fn">lit</span>(<span class="str">'At Risk'</span>))
+    .<span class="fn">when</span>(
+        (pl.<span class="fn">col</span>(<span class="str">'R'</span>).<span class="fn">cast</span>(pl.Int32) >= <span class="num">4</span>) &amp;
+        (pl.<span class="fn">col</span>(<span class="str">'F'</span>).<span class="fn">cast</span>(pl.Int32) &lt;= <span class="num">2</span>)
+    ).<span class="fn">then</span>(pl.<span class="fn">lit</span>(<span class="str">'New Customer'</span>))
+    .<span class="fn">otherwise</span>(pl.<span class="fn">lit</span>(<span class="str">'Regular'</span>))
+    .<span class="fn">alias</span>(<span class="str">'segmen'</span>)
+)
+
+<span class="cm"># Hitung distribusi segmen</span>
+rfm.<span class="fn">group_by</span>(<span class="str">'segmen'</span>).<span class="fn">agg</span>(pl.<span class="fn">len</span>().<span class="fn">alias</span>(<span class="str">'count'</span>)).<span class="fn">sort</span>(<span class="str">'count'</span>, descending=<span class="kw">True</span>)</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 18 — COHORT ANALYSIS CODE
+         ========================================== -->
+    <section class="slide" data-slide="17">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 4</p>
+            <h2 class="reveal">Cohort Analysis dengan Polars</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># Step 1: Tentukan cohort (bulan pertama transaksi per customer)</span>
+cohort = df.<span class="fn">with_columns</span>(
+    pl.<span class="fn">col</span>(<span class="str">'tanggal'</span>).<span class="fn">dt</span>.<span class="fn">truncate</span>(<span class="str">'1mo'</span>).<span class="fn">alias</span>(<span class="str">'order_month'</span>)
+).<span class="fn">with_columns</span>(
+    pl.<span class="fn">col</span>(<span class="str">'order_month'</span>).<span class="fn">min</span>().<span class="fn">over</span>(<span class="str">'id'</span>).<span class="fn">alias</span>(<span class="str">'cohort_month'</span>)
+)
+
+<span class="cm"># Step 2: Hitung cohort period (bulan ke-N)</span>
+cohort = cohort.<span class="fn">with_columns</span>(
+    ((pl.<span class="fn">col</span>(<span class="str">'order_month'</span>) - pl.<span class="fn">col</span>(<span class="str">'cohort_month'</span>))
+     .<span class="fn">dt</span>.<span class="fn">total_days</span>() / <span class="num">30</span>).<span class="fn">cast</span>(pl.Int32).<span class="fn">alias</span>(<span class="str">'period'</span>)
+)
+
+<span class="cm"># Step 3: Hitung retention</span>
+cohort_table = (
+    cohort.<span class="fn">group_by</span>(<span class="str">'cohort_month'</span>, <span class="str">'period'</span>)
+    .<span class="fn">agg</span>(pl.<span class="fn">col</span>(<span class="str">'id'</span>).<span class="fn">n_unique</span>().<span class="fn">alias</span>(<span class="str">'customers'</span>))
+    .<span class="fn">sort</span>(<span class="str">'cohort_month'</span>, <span class="str">'period'</span>)
+)</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 19 — BENCHMARK
+         ========================================== -->
+    <section class="slide" data-slide="18">
+        <div class="accent-bar"></div>
+        <div class="bg-number">&#9889;</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Benchmark</p>
+            <h2 class="reveal">Pandas vs Polars vs DuckDB — 10M Rows</h2>
+            <div class="reveal" style="margin-top: var(--content-gap);">
+                <p style="font-size: var(--small-size); margin-bottom: var(--element-gap);"><strong>Test: Filter (kota='Jakarta') + GroupBy (layanan) + Agg (avg tarif)</strong></p>
+                <div class="bench-row">
+                    <span class="bench-label">Pandas</span>
+                    <div class="bench-bar alt" style="width: 90%"><span>2.8s</span></div>
+                </div>
+                <div class="bench-row">
+                    <span class="bench-label">Polars Eager</span>
+                    <div class="bench-bar" style="width: 8%"><span>0.25s</span></div>
+                    <span class="bench-speedup">11x</span>
+                </div>
+                <div class="bench-row">
+                    <span class="bench-label">Polars Lazy</span>
+                    <div class="bench-bar" style="width: 5%"><span>0.15s</span></div>
+                    <span class="bench-speedup">19x</span>
+                </div>
+                <div class="bench-row">
+                    <span class="bench-label">DuckDB</span>
+                    <div class="bench-bar" style="width: 3%"><span>0.08s</span></div>
+                    <span class="bench-speedup">35x</span>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Polars Lazy 19x lebih cepat dari Pandas!</strong> DuckDB tetap raja SQL, tapi Polars raja DataFrame Python.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 20 — BENCHMARK CODE
+         ========================================== -->
+    <section class="slide" data-slide="19">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 5</p>
+            <h2 class="reveal">Kode Benchmark Lengkap</h2>
+            <div class="code-block reveal">
+                <code><span class="kw">import</span> pandas <span class="kw">as</span> pd, polars <span class="kw">as</span> pl, duckdb, time
+
+<span class="cm"># === Pandas ===</span>
+pdf = pd.<span class="fn">read_parquet</span>(<span class="str">'trips_10m.parquet'</span>)
+t0 = time.<span class="fn">time</span>()
+pdf[pdf[<span class="str">'kota'</span>]==<span class="str">'Jakarta'</span>].<span class="fn">groupby</span>(<span class="str">'layanan'</span>)[<span class="str">'tarif'</span>].<span class="fn">mean</span>()
+<span class="fn">print</span>(<span class="str">f"Pandas: </span>{time.<span class="fn">time</span>()-t0:<span class="num">.2f</span>}<span class="str">s"</span>)
+
+<span class="cm"># === Polars Eager ===</span>
+pldf = pl.<span class="fn">read_parquet</span>(<span class="str">'trips_10m.parquet'</span>)
+t0 = time.<span class="fn">time</span>()
+pldf.<span class="fn">filter</span>(pl.<span class="fn">col</span>(<span class="str">'kota'</span>)==<span class="str">'Jakarta'</span>).<span class="fn">group_by</span>(<span class="str">'layanan'</span>).<span class="fn">agg</span>(
+    pl.<span class="fn">col</span>(<span class="str">'tarif'</span>).<span class="fn">mean</span>())
+<span class="fn">print</span>(<span class="str">f"Polars Eager: </span>{time.<span class="fn">time</span>()-t0:<span class="num">.2f</span>}<span class="str">s"</span>)
+
+<span class="cm"># === Polars Lazy ===</span>
+t0 = time.<span class="fn">time</span>()
+pl.<span class="fn">scan_parquet</span>(<span class="str">'trips_10m.parquet'</span>).<span class="fn">filter</span>(
+    pl.<span class="fn">col</span>(<span class="str">'kota'</span>)==<span class="str">'Jakarta'</span>).<span class="fn">group_by</span>(<span class="str">'layanan'</span>).<span class="fn">agg</span>(
+    pl.<span class="fn">col</span>(<span class="str">'tarif'</span>).<span class="fn">mean</span>()).<span class="fn">collect</span>()
+<span class="fn">print</span>(<span class="str">f"Polars Lazy: </span>{time.<span class="fn">time</span>()-t0:<span class="num">.2f</span>}<span class="str">s"</span>)
+
+<span class="cm"># === DuckDB ===</span>
+t0 = time.<span class="fn">time</span>()
+duckdb.<span class="fn">sql</span>(<span class="str">"""SELECT layanan, AVG(tarif)
+  FROM 'trips_10m.parquet'
+  WHERE kota='Jakarta' GROUP BY 1"""</span>)
+<span class="fn">print</span>(<span class="str">f"DuckDB: </span>{time.<span class="fn">time</span>()-t0:<span class="num">.2f</span>}<span class="str">s"</span>)</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 21 — SECTION: TIPS & ERROR
+         ========================================== -->
+    <section class="slide section-divider" data-slide="20">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 4</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Tips &<br>Kesalahan Umum</h2>
+            <div class="section-num">04</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 22 — KESALAHAN UMUM
+         ========================================== -->
+    <section class="slide" data-slide="21">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Hindari</p>
+            <h2 class="reveal">Kesalahan Umum Polars</h2>
+            <ul class="content-list reveal">
+                <li><strong>pl.count()</strong> sudah DEPRECATED &rarr; gunakan <code>pl.len()</code></li>
+                <li><strong>qcut tanpa allow_duplicates=True</strong> &rarr; CRASH jika ada nilai duplikat. Selalu tambahkan parameter ini.</li>
+                <li><strong>pl.Utf8</strong> sudah DEPRECATED &rarr; gunakan <code>pl.String</code></li>
+                <li><strong>read_parquet untuk data besar</strong> &rarr; boros RAM. Gunakan <code>scan_parquet</code> (lazy).</li>
+                <li><strong>Lupa .collect()</strong> pada LazyFrame &rarr; tidak ada hasil! LazyFrame hanya rencana, belum eksekusi.</li>
+                <li><strong>Pakai .apply() atau loop</strong> &rarr; sangat lambat. Gunakan Expression API (<code>pl.col()</code>, <code>pl.when()</code>).</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 23 — KAPAN PAKAI APA
+         ========================================== -->
+    <section class="slide" data-slide="22">
+        <div class="accent-bar"></div>
+        <div class="bg-number">?</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Panduan</p>
+            <h2 class="reveal">Kapan Pakai Apa?</h2>
+            <table class="data-table reveal">
+                <thead>
+                    <tr><th>Ukuran Data</th><th>Tool</th><th>Alasan</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>&lt; 1 juta baris</td><td>Pandas</td><td>Familiar, banyak tutorial, cukup cepat</td></tr>
+                    <tr><td>1-100 juta (Python)</td><td>Polars</td><td>5-50x cepat, lazy eval, hemat RAM</td></tr>
+                    <tr><td>1-100 juta (SQL)</td><td>DuckDB</td><td>SQL standard, columnar, zero setup</td></tr>
+                    <tr><td>&gt; 100 juta baris</td><td>BigQuery / Spark</td><td>Distributed, cloud-scale</td></tr>
+                </tbody>
+            </table>
+            <div class="tip-box reveal">
+                <p><strong>Polars + DuckDB = kombinasi terbaik!</strong> DataFrame API (Polars) + SQL (DuckDB) + zero-copy (Arrow).</p>
+            </div>
+            <div class="info-grid reveal" style="margin-top: var(--element-gap);">
+                <div class="info-card">
+                    <h4>Polars Kelebihan</h4>
+                    <p>Python native, method chaining, lazy eval, expression API, immutable</p>
+                </div>
+                <div class="info-card">
+                    <h4>DuckDB Kelebihan</h4>
+                    <p>SQL standard, query file langsung, window functions, zero-copy ke Pandas/Polars</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 24 — POLARS VS PANDAS CHEATSHEET
+         ========================================== -->
+    <section class="slide" data-slide="23">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Cheatsheet</p>
+            <h2 class="reveal">Polars vs Pandas — Syntax</h2>
+            <table class="data-table reveal">
+                <thead>
+                    <tr><th>Operasi</th><th>Pandas</th><th>Polars</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Filter</td><td>df[df['x'] &gt; 5]</td><td>df.filter(pl.col('x') &gt; 5)</td></tr>
+                    <tr><td>Select</td><td>df[['a','b']]</td><td>df.select('a', 'b')</td></tr>
+                    <tr><td>New col</td><td>df['y'] = df['x']*2</td><td>df.with_columns((pl.col('x')*2).alias('y'))</td></tr>
+                    <tr><td>GroupBy</td><td>df.groupby('k')['v'].mean()</td><td>df.group_by('k').agg(pl.col('v').mean())</td></tr>
+                    <tr><td>Sort</td><td>df.sort_values('x')</td><td>df.sort('x')</td></tr>
+                    <tr><td>Count</td><td>len(df) / df.shape[0]</td><td>pl.len() / df.height</td></tr>
+                    <tr><td>Read</td><td>pd.read_parquet()</td><td>pl.read_parquet() / pl.scan_parquet()</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 25 — POLARS ECOSYSTEM
+         ========================================== -->
+    <section class="slide" data-slide="24">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Ekosistem</p>
+            <h2 class="reveal">Polars dalam Ekosistem Data Modern</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>Polars + DuckDB</h4>
+                    <p>Query Polars DataFrame pakai SQL: duckdb.sql("SELECT * FROM pldf")</p>
+                </div>
+                <div class="info-card">
+                    <h4>Polars + Matplotlib</h4>
+                    <p>pl_df.to_pandas() → plt.plot(). Atau langsung .to_series().to_list()</p>
+                </div>
+                <div class="info-card">
+                    <h4>Polars + scikit-learn</h4>
+                    <p>pl_df.to_numpy() → model.fit(). Polars untuk preprocessing, sklearn untuk ML.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Polars + Parquet</h4>
+                    <p>df.write_parquet('out.parquet'). Scan_parquet untuk file besar tanpa load semua.</p>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Polars jadi "glue" antara data prep dan tools lain</strong> — berkat Apache Arrow zero-copy.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 26 — DISKUSI
+         ========================================== -->
+    <section class="slide" data-slide="25">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Refleksi</p>
+            <h2 class="reveal">Diskusi & Pertanyaan</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>Q1</h4>
+                    <p>Kenapa Polars lebih cepat dari Pandas? (Rust, Arrow, multi-threaded, lazy eval)</p>
+                </div>
+                <div class="info-card">
+                    <h4>Q2</h4>
+                    <p>Apa perbedaan eager vs lazy evaluation? Kapan lazy lebih unggul?</p>
+                </div>
+                <div class="info-card">
+                    <h4>Q3</h4>
+                    <p>Kenapa scan_parquet lebih hemat dari read_parquet? (projection & predicate pushdown)</p>
+                </div>
+                <div class="info-card">
+                    <h4>Q4</h4>
+                    <p>Apa kegunaan RFM segmentation di dunia bisnis nyata? Contoh aksi per segmen?</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 27 — RINGKASAN
+         ========================================== -->
+    <section class="slide" data-slide="26">
+        <div class="accent-bar"></div>
+        <div class="bg-number">&#10003;</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Ringkasan</p>
+            <h2 class="reveal">Apa yang Sudah Kita Pelajari</h2>
+            <ul class="content-list reveal">
+                <li><strong>Polars</strong> = DataFrame library berbasis Rust, 5-50x lebih cepat dari Pandas</li>
+                <li><strong>Apache Arrow</strong> = format memori kolom standar industri, zero-copy antar library</li>
+                <li><strong>Lazy evaluation</strong> = catat operasi, optimasi, eksekusi sekali. Predicate & projection pushdown.</li>
+                <li><strong>Expression API</strong> = pl.col(), .filter(), .with_columns(), .group_by().agg() — tanpa index</li>
+                <li><strong>scan_parquet</strong> = baca metadata dulu, hanya load kolom & baris yang dibutuhkan</li>
+                <li><strong>RFM Segmentation</strong> = Recency + Frequency + Monetary &rarr; VIP, At Risk, New Customer</li>
+                <li><strong>Cohort Analysis</strong> = track retensi pelanggan per kelompok bulan pertama beli</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 28 — SECTION: TUGAS
+         ========================================== -->
+    <section class="slide section-divider" data-slide="27">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 5</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Studi Kasus<br>& Tugas</h2>
+            <div class="section-num">05</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 29 — TUGAS: OLIST + ONLINE RETAIL
+         ========================================== -->
+    <section class="slide" data-slide="28">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Tugas</p>
+            <h2 class="reveal">Olist 100K Orders + Online Retail 1M</h2>
+            <div class="two-col reveal">
+                <div>
+                    <h3 style="font-size: clamp(0.8rem, 1.2vw, 1rem); margin-bottom: var(--element-gap);">Dataset A: Olist E-Commerce (Kaggle)</h3>
+                    <ul class="content-list">
+                        <li>Load CSV/Parquet dengan <code>pl.read_*</code> atau <code>pl.scan_*</code></li>
+                        <li>Hitung RFM per customer_id</li>
+                        <li>Segmentasi: VIP, Loyal, At Risk, Hibernating</li>
+                        <li>Visualisasi distribusi segmen (bar chart)</li>
+                        <li>Cohort analysis: retensi per bulan</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 style="font-size: clamp(0.8rem, 1.2vw, 1rem); margin-bottom: var(--element-gap);">Dataset B: Online Retail (UCI)</h3>
+                    <ul class="content-list">
+                        <li>Load &amp; bersihkan data (drop null CustomerID)</li>
+                        <li>Hitung Monetary = Quantity * UnitPrice</li>
+                        <li>RFM scoring dengan qcut</li>
+                        <li>Benchmark: Pandas vs Polars untuk RFM</li>
+                        <li>Cohort retention heatmap</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Kumpulkan:</strong> notebook (.ipynb) + screenshot hasil + analisis singkat per segmen. <strong>Wajib pakai Polars</strong> (bukan Pandas).</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 30 — REFERENSI
+         ========================================== -->
+    <section class="slide" data-slide="29">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Referensi</p>
+            <h2 class="reveal">Bahan Belajar Mandiri</h2>
+            <ul class="content-list reveal">
+                <li><strong>Polars Docs:</strong> docs.pola.rs — User Guide & API Reference</li>
+                <li><strong>Polars GitHub:</strong> github.com/pola-rs/polars — 30K+ stars</li>
+                <li><strong>Apache Arrow:</strong> arrow.apache.org — Format memori kolom</li>
+                <li><strong>RFM Analysis:</strong> Putler Blog — "RFM Analysis: The Complete Guide"</li>
+                <li><strong>Olist Dataset:</strong> kaggle.com/datasets/olistbr/brazilian-ecommerce</li>
+                <li><strong>Online Retail:</strong> archive.ics.uci.edu/dataset/352/online+retail</li>
+                <li><strong>Buku:</strong> Ritchie Vink — "Polars Cookbook" (creator Polars)</li>
+                <li><strong>Video:</strong> Rob Mulla — "Polars vs Pandas" (YouTube, 500K+ views)</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ===========================================
+         JAVASCRIPT: Presentation Controller
+         =========================================== -->
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.isScrolling = false;
+                this.setupIntersectionObserver();
+                this.setupKeyboardNav();
+                this.setupTouchNav();
+                this.setupWheelNav();
+                this.setupProgressBar();
+                this.setupNavDots();
+            }
+
+            setupIntersectionObserver() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            const idx = Array.from(this.slides).indexOf(entry.target);
+                            if (idx !== -1) {
+                                this.currentSlide = idx;
+                                this.updateProgressBar();
+                                this.updateNavDots();
+                            }
+                        }
+                    });
+                }, { threshold: 0.5 });
+                this.slides.forEach(slide => observer.observe(slide));
+            }
+
+            goToSlide(index) {
+                if (index >= 0 && index < this.slides.length) {
+                    this.slides[index].scrollIntoView({ behavior: 'smooth' });
+                    this.currentSlide = index;
+                    this.updateProgressBar();
+                    this.updateNavDots();
+                }
+            }
+
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.target.getAttribute && e.target.getAttribute('contenteditable') === 'true') return;
+                    switch(e.key) {
+                        case 'ArrowDown': case 'ArrowRight': case ' ': case 'PageDown':
+                            e.preventDefault(); this.goToSlide(this.currentSlide + 1); break;
+                        case 'ArrowUp': case 'ArrowLeft': case 'PageUp':
+                            e.preventDefault(); this.goToSlide(this.currentSlide - 1); break;
+                        case 'Home': e.preventDefault(); this.goToSlide(0); break;
+                        case 'End': e.preventDefault(); this.goToSlide(this.slides.length - 1); break;
+                    }
+                });
+            }
+
+            setupTouchNav() {
+                let startY = 0;
+                document.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; }, { passive: true });
+                document.addEventListener('touchend', (e) => {
+                    const diff = startY - e.changedTouches[0].clientY;
+                    if (Math.abs(diff) > 50) {
+                        diff > 0 ? this.goToSlide(this.currentSlide + 1) : this.goToSlide(this.currentSlide - 1);
+                    }
+                }, { passive: true });
+            }
+
+            setupWheelNav() {
+                let timeout;
+                document.addEventListener('wheel', (e) => {
+                    if (this.isScrolling) return;
+                    this.isScrolling = true;
+                    clearTimeout(timeout);
+                    if (e.deltaY > 30) this.goToSlide(this.currentSlide + 1);
+                    else if (e.deltaY < -30) this.goToSlide(this.currentSlide - 1);
+                    timeout = setTimeout(() => { this.isScrolling = false; }, 800);
+                }, { passive: true });
+            }
+
+            setupProgressBar() {
+                this.progressBar = document.getElementById('progressBar');
+                this.updateProgressBar();
+            }
+
+            updateProgressBar() {
+                const pct = ((this.currentSlide + 1) / this.slides.length) * 100;
+                if (this.progressBar) this.progressBar.style.width = pct + '%';
+            }
+
+            setupNavDots() {
+                const container = document.getElementById('navDots');
+                if (!container) return;
+                this.slides.forEach((_, i) => {
+                    const dot = document.createElement('button');
+                    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+                    dot.addEventListener('click', () => this.goToSlide(i));
+                    dot.setAttribute('aria-label', `Slide ${i + 1}`);
+                    container.appendChild(dot);
+                });
+                this.dots = container.querySelectorAll('.nav-dot');
+            }
+
+            updateNavDots() {
+                if (!this.dots) return;
+                this.dots.forEach((dot, i) => {
+                    dot.classList.toggle('active', i === this.currentSlide);
+                });
+            }
+        }
+
+        /* ===========================================
+           INLINE EDITOR
+           =========================================== */
+        class InlineEditor {
+            constructor() {
+                this.isActive = false;
+                this.storageKey = 'slides-p11-edits';
+                this.loadEdits();
+            }
+
+            toggleEditMode() {
+                this.isActive = !this.isActive;
+                document.body.classList.toggle('editing-active', this.isActive);
+                document.getElementById('editToggle').classList.toggle('active', this.isActive);
+                const editables = document.querySelectorAll('h1,h2,h3,h4,p,li,span,.step-desc,.step-title,.tag');
+                editables.forEach(el => {
+                    if (el.closest('.nav-dots') || el.closest('.edit-toggle')) return;
+                    el.contentEditable = this.isActive ? 'true' : 'false';
+                });
+                if (this.isActive) {
+                    document.addEventListener('input', this._saveHandler = () => this.saveEdits());
+                } else {
+                    document.removeEventListener('input', this._saveHandler);
+                    this.saveEdits();
+                }
+            }
+
+            saveEdits() {
+                const data = {};
+                document.querySelectorAll('.slide').forEach((slide, i) => {
+                    data[i] = slide.innerHTML;
+                });
+                try { localStorage.setItem(this.storageKey, JSON.stringify(data)); } catch(e) {}
+                const notice = document.getElementById('saveNotice');
+                notice.classList.add('show');
+                setTimeout(() => notice.classList.remove('show'), 1200);
+            }
+
+            loadEdits() {
+                try {
+                    const data = JSON.parse(localStorage.getItem(this.storageKey));
+                    if (!data) return;
+                    document.querySelectorAll('.slide').forEach((slide, i) => {
+                        if (data[i]) slide.innerHTML = data[i];
+                    });
+                } catch(e) {}
+            }
+        }
+
+        /* Init */
+        const presentation = new SlidePresentation();
+        const editor = new InlineEditor();
+
+        /* Edit hotzone + toggle */
+        const hotzone = document.getElementById('editHotzone');
+        const editToggle = document.getElementById('editToggle');
+        let hideTimeout = null;
+        hotzone.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); editToggle.classList.add('show'); });
+        hotzone.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+        editToggle.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); });
+        editToggle.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+        editToggle.addEventListener('click', () => editor.toggleEditMode());
+        hotzone.addEventListener('click', () => editor.toggleEditMode());
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) editor.toggleEditMode();
+        });
+    </script>
+</body>
+</html>

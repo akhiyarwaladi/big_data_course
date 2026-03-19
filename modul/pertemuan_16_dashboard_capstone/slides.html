@@ -1,0 +1,1590 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pertemuan 16 — Dashboard & Capstone Project</title>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;800&family=Nunito:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES — SWISS MODERN THEME
+           =========================================== */
+        :root {
+            --bg-white: #ffffff;
+            --bg-light: #f8f8f8;
+            --text-primary: #0a0a0a;
+            --text-secondary: #555;
+            --text-muted: #888;
+            --accent-red: #ff3300;
+            --accent-red-light: rgba(255, 51, 0, 0.08);
+            --accent-red-glow: rgba(255, 51, 0, 0.15);
+            --grid-color: rgba(0,0,0,0.05);
+            --border-color: rgba(0,0,0,0.1);
+            --font-display: 'Archivo', sans-serif;
+            --font-body: 'Nunito', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration-normal: 0.6s;
+
+            --title-size: clamp(2.2rem, 6vw, 5rem);
+            --h2-size: clamp(1.8rem, 4.5vw, 3.2rem);
+            --h3-size: clamp(1.3rem, 3vw, 2.2rem);
+            --body-size: clamp(1rem, 2vw, 1.5rem);
+            --small-size: clamp(0.85rem, 1.4vw, 1.15rem);
+            --slide-padding: clamp(1rem, 3vw, 2.5rem);
+            --content-gap: clamp(0.5rem, 1.5vw, 1.5rem);
+            --element-gap: clamp(0.25rem, 0.8vw, 0.75rem);
+        }
+
+        /* ===========================================
+           BASE RESET
+           =========================================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ===========================================
+           VIEWPORT FITTING — MANDATORY BASE STYLES
+           =========================================== */
+        html, body { height: 100%; overflow-x: hidden; }
+        html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+
+        .slide {
+            width: 100vw; height: 100vh; height: 100dvh;
+            overflow: hidden; scroll-snap-align: start;
+            display: flex; flex-direction: column; position: relative;
+        }
+        .slide-content {
+            flex: 1; display: flex; flex-direction: column; justify-content: center;
+            max-height: 100%; overflow: hidden;
+            padding: clamp(1.5rem, 3vh, 3rem) var(--slide-padding);
+            padding-left: clamp(2.5rem, 5vw, 5rem);
+            padding-right: clamp(2rem, 4vw, 4rem);
+        }
+        .card, .container, .content-box {
+            max-width: min(95vw, 1200px); max-height: min(90vh, 800px);
+        }
+        .feature-list, .bullet-list { gap: clamp(0.4rem, 1vh, 1rem); }
+        .feature-list li, .bullet-list li { font-size: var(--body-size); line-height: 1.4; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+            gap: clamp(0.5rem, 1.5vw, 1rem);
+        }
+        img, .image-container { max-width: 100%; max-height: min(50vh, 400px); object-fit: contain; }
+
+        @media (max-height: 700px) {
+            :root {
+                --slide-padding: clamp(0.75rem, 2vw, 1.5rem);
+                --content-gap: clamp(0.4rem, 1vw, 0.8rem);
+                --title-size: clamp(1.6rem, 5vw, 3rem);
+                --h2-size: clamp(1.3rem, 3.5vw, 2.2rem);
+                --body-size: clamp(0.85rem, 1.6vw, 1.2rem);
+            }
+        }
+        @media (max-height: 600px) {
+            :root {
+                --slide-padding: clamp(0.5rem, 1.5vw, 1rem);
+                --content-gap: clamp(0.3rem, 0.8vw, 0.6rem);
+                --title-size: clamp(1.4rem, 4.5vw, 2.5rem);
+                --body-size: clamp(0.8rem, 1.4vw, 1.1rem);
+            }
+            .nav-dots, .keyboard-hint, .decorative { display: none; }
+        }
+        @media (max-height: 500px) {
+            :root {
+                --slide-padding: clamp(0.4rem, 1.5vw, 0.8rem);
+                --title-size: clamp(1.2rem, 4vw, 2rem);
+                --h2-size: clamp(1rem, 3vw, 1.5rem);
+                --body-size: clamp(0.75rem, 1.2vw, 1rem);
+            }
+        }
+        @media (max-width: 600px) {
+            :root { --title-size: clamp(1.5rem, 8vw, 3rem); }
+            .grid { grid-template-columns: 1fr; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.2s !important;
+            }
+            html { scroll-behavior: auto; }
+        }
+
+        /* ===========================================
+           SWISS MODERN — GRID BACKGROUND
+           =========================================== */
+        .slide::before {
+            content: '';
+            position: absolute; inset: 0;
+            background-image:
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: clamp(30px, 5vw, 60px) clamp(30px, 5vw, 60px);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .slide > * { position: relative; z-index: 1; }
+
+        /* ===========================================
+           ACCENT BAR (left edge)
+           =========================================== */
+        .accent-bar {
+            position: absolute; left: 0; top: 0; bottom: 0;
+            width: clamp(4px, 0.5vw, 6px);
+            background: var(--accent-red);
+            z-index: 2;
+        }
+
+        /* ===========================================
+           TYPOGRAPHY
+           =========================================== */
+        body { font-family: var(--font-body); color: var(--text-primary); background: var(--bg-white); }
+
+        h1, h2, h3 { font-family: var(--font-display); font-weight: 800; line-height: 1.1; }
+        h1 { font-size: var(--title-size); }
+        h2 { font-size: var(--h2-size); margin-bottom: var(--content-gap); }
+        h3 { font-size: var(--h3-size); }
+        p, li { font-size: var(--body-size); line-height: 1.6; color: var(--text-secondary); }
+        .highlight { color: var(--accent-red); }
+        .tag-label {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(0.8rem, 1.3vw, 1.1rem);
+            color: var(--accent-red); text-transform: uppercase; letter-spacing: 0.2em;
+            margin-bottom: var(--element-gap);
+        }
+
+        /* ===========================================
+           LARGE BACKGROUND NUMBER
+           =========================================== */
+        .bg-number {
+            position: absolute;
+            right: clamp(1rem, 4vw, 4rem);
+            top: clamp(0.5rem, 2vh, 2rem);
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(5rem, 15vw, 12rem);
+            color: rgba(0,0,0,0.03);
+            line-height: 1; z-index: 0; pointer-events: none;
+        }
+
+        /* ===========================================
+           SECTION DIVIDER SLIDES
+           =========================================== */
+        .slide.section-divider {
+            background: var(--text-primary);
+        }
+        .slide.section-divider::before {
+            background-image:
+                linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+        }
+        .slide.section-divider .accent-bar { background: var(--accent-red); }
+        .slide.section-divider h2 { color: #fff; }
+        .slide.section-divider .section-num {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(4rem, 12vw, 10rem);
+            color: rgba(255,255,255,0.06);
+            position: absolute;
+            right: clamp(2rem, 6vw, 6rem);
+            bottom: clamp(1rem, 4vh, 4rem);
+        }
+        .slide.section-divider .tag-label { color: var(--accent-red); }
+
+        /* ===========================================
+           TITLE SLIDE
+           =========================================== */
+        .slide.title-slide { background: var(--bg-white); }
+        .title-meta {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+            color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em;
+            margin-bottom: clamp(0.5rem, 1vh, 1rem);
+        }
+        .title-slide h1 {
+            font-size: clamp(2.5rem, 6.5vw, 5.5rem);
+            margin-bottom: clamp(0.5rem, 1.5vh, 1.5rem);
+        }
+        .title-desc {
+            font-size: clamp(1.1rem, 2vw, 1.5rem);
+            color: var(--text-secondary);
+            max-width: 700px; line-height: 1.6;
+            margin-bottom: clamp(0.75rem, 2vh, 1.5rem);
+        }
+        .tags {
+            display: flex; gap: clamp(8px, 1vw, 14px); flex-wrap: wrap;
+        }
+        .tag {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.7rem, 1.1vw, 0.95rem);
+            text-transform: uppercase; letter-spacing: 0.08em;
+            padding: clamp(4px, 0.6vh, 8px) clamp(10px, 1.2vw, 18px);
+            border: 2px solid var(--text-primary);
+            color: var(--text-primary);
+        }
+        .tag.active { background: var(--text-primary); color: var(--bg-white); }
+
+        /* ===========================================
+           CONTENT COMPONENTS
+           =========================================== */
+        /* Comparison columns */
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: clamp(1rem, 3vw, 3rem);
+            margin-top: var(--content-gap);
+        }
+        @media (max-width: 600px) { .comparison { grid-template-columns: 1fr; } }
+        .comparison-col h3 {
+            font-size: clamp(1.1rem, 1.8vw, 1.5rem);
+            margin-bottom: var(--element-gap);
+            padding-bottom: var(--element-gap);
+            border-bottom: 3px solid var(--accent-red);
+        }
+        .comparison-col.alt h3 { border-bottom-color: var(--text-primary); }
+        .comparison-col ul { list-style: none; }
+        .comparison-col li {
+            font-size: clamp(0.9rem, 1.4vw, 1.2rem);
+            padding: clamp(3px, 0.4vh, 6px) 0;
+            padding-left: 1.2em;
+            position: relative;
+        }
+        .comparison-col li::before {
+            content: '→';
+            position: absolute; left: 0;
+            color: var(--accent-red);
+            font-weight: 700;
+        }
+
+        /* Steps */
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+            gap: clamp(0.5rem, 1.5vw, 1.5rem);
+            margin-top: var(--content-gap);
+        }
+        .step {
+            border-left: 3px solid var(--accent-red);
+            padding-left: clamp(0.5rem, 1vw, 1rem);
+        }
+        .step-num {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(1.5rem, 2.5vw, 2.2rem);
+            color: var(--accent-red); line-height: 1;
+        }
+        .step-title {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.9rem, 1.4vw, 1.2rem);
+            color: var(--text-primary);
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin: clamp(2px, 0.3vh, 4px) 0;
+        }
+        .step-desc {
+            font-size: clamp(0.85rem, 1.3vw, 1.1rem);
+            color: var(--text-secondary);
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: #1a1a1a;
+            border-radius: 4px;
+            padding: clamp(0.5rem, 1.5vw, 1.5rem);
+            margin-top: var(--element-gap);
+            overflow-x: auto;
+            max-height: min(45vh, 350px);
+        }
+        .code-block code {
+            font-family: var(--font-mono);
+            font-size: clamp(0.85rem, 1.4vw, 1.15rem);
+            color: #e0e0e0; line-height: 1.5;
+            white-space: pre;
+        }
+        .code-block .kw { color: #ff7b72; }
+        .code-block .fn { color: #d2a8ff; }
+        .code-block .str { color: #a5d6ff; }
+        .code-block .cm { color: #8b949e; }
+        .code-block .num { color: #79c0ff; }
+
+        /* Info cards */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+            gap: clamp(0.5rem, 1vw, 1rem);
+            margin-top: var(--content-gap);
+        }
+        .info-card {
+            padding: clamp(0.5rem, 1.5vw, 1.5rem);
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+        .info-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0;
+            height: 3px; background: var(--accent-red);
+        }
+        .info-card h4 {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(0.95rem, 1.5vw, 1.25rem);
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin-bottom: clamp(2px, 0.5vh, 6px);
+        }
+        .info-card p { font-size: clamp(0.9rem, 1.3vw, 1.15rem); }
+
+        /* Benchmark bars */
+        .bench-row {
+            display: flex; align-items: center;
+            gap: clamp(0.5rem, 1vw, 1rem);
+            margin-bottom: clamp(0.3rem, 0.5vh, 0.5rem);
+        }
+        .bench-label {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+            min-width: clamp(70px, 10vw, 120px);
+            text-align: right;
+        }
+        .bench-bar {
+            height: clamp(28px, 4vh, 40px);
+            background: var(--accent-red);
+            border-radius: 2px;
+            display: flex; align-items: center;
+            padding-left: clamp(6px, 0.8vw, 12px);
+            transition: width 1s var(--ease-out-expo);
+        }
+        .bench-bar.alt { background: var(--text-primary); }
+        .bench-bar span {
+            font-family: var(--font-mono);
+            font-size: clamp(0.75rem, 1.1vw, 1rem);
+            color: #fff; white-space: nowrap;
+            font-weight: 500;
+        }
+        .bench-speedup {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(1rem, 1.5vw, 1.3rem);
+            color: var(--accent-red);
+        }
+
+        /* Bullet list */
+        .content-list {
+            list-style: none;
+            margin-top: var(--element-gap);
+        }
+        .content-list li {
+            padding: clamp(3px, 0.5vh, 6px) 0;
+            padding-left: 1.5em; position: relative;
+            font-size: var(--body-size);
+        }
+        .content-list li::before {
+            content: ''; position: absolute;
+            left: 0; top: clamp(10px, 1.2vh, 14px);
+            width: 8px; height: 3px;
+            background: var(--accent-red);
+        }
+
+        /* Tip/warning box */
+        .tip-box {
+            border-left: 4px solid var(--accent-red);
+            background: var(--accent-red-light);
+            padding: clamp(0.5rem, 1vw, 1rem);
+            margin-top: var(--element-gap);
+        }
+        .tip-box p { font-size: clamp(0.9rem, 1.4vw, 1.2rem); color: var(--text-primary); }
+        .tip-box strong { color: var(--accent-red); }
+
+        /* Table */
+        .data-table {
+            width: 100%; border-collapse: collapse;
+            margin-top: var(--element-gap);
+            font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+        }
+        .data-table th {
+            font-family: var(--font-display); font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            font-size: clamp(0.8rem, 1.2vw, 1.05rem);
+            text-align: left;
+            padding: clamp(6px, 0.8vh, 12px) clamp(8px, 1.2vw, 16px);
+            border-bottom: 2px solid var(--text-primary);
+            color: var(--text-primary);
+        }
+        .data-table td {
+            padding: clamp(5px, 0.7vh, 10px) clamp(8px, 1.2vw, 16px);
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+        .data-table td:first-child { font-weight: 600; color: var(--text-primary); }
+
+        /* Two column layout */
+        .two-col {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: clamp(1rem, 3vw, 3rem);
+            margin-top: var(--content-gap);
+        }
+        @media (max-width: 600px) { .two-col { grid-template-columns: 1fr; } }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal {
+            opacity: 0; transform: translateY(20px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .reveal-left {
+            opacity: 0; transform: translateX(-30px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .slide.visible .reveal,
+        .slide.visible .reveal-left {
+            opacity: 1; transform: translate(0);
+        }
+        .slide.visible .reveal:nth-child(1) { transition-delay: 0.05s; }
+        .slide.visible .reveal:nth-child(2) { transition-delay: 0.1s; }
+        .slide.visible .reveal:nth-child(3) { transition-delay: 0.15s; }
+        .slide.visible .reveal:nth-child(4) { transition-delay: 0.2s; }
+        .slide.visible .reveal:nth-child(5) { transition-delay: 0.25s; }
+        .slide.visible .reveal:nth-child(6) { transition-delay: 0.3s; }
+
+        /* ===========================================
+           PROGRESS BAR
+           =========================================== */
+        .progress-bar {
+            position: fixed; top: 0; left: 0;
+            height: 3px; background: var(--accent-red);
+            z-index: 9999; transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        /* ===========================================
+           NAV DOTS
+           =========================================== */
+        .nav-dots {
+            position: fixed; right: clamp(8px, 1vw, 16px);
+            top: 50%; transform: translateY(-50%);
+            display: flex; flex-direction: column;
+            gap: clamp(4px, 0.5vh, 8px); z-index: 9998;
+        }
+        .nav-dot {
+            width: clamp(6px, 0.5vw, 8px); height: clamp(6px, 0.5vw, 8px);
+            background: var(--border-color);
+            border-radius: 50%; cursor: pointer;
+            transition: all 0.3s ease; border: none; padding: 0;
+        }
+        .nav-dot.active {
+            background: var(--accent-red);
+            transform: scale(1.4);
+        }
+
+        /* ===========================================
+           EDIT MODE (opt-in)
+           =========================================== */
+        .edit-hotzone {
+            position: fixed; top: 0; left: 0;
+            width: 80px; height: 80px;
+            z-index: 10000; cursor: pointer;
+        }
+        .edit-toggle {
+            position: fixed; top: 16px; left: 16px;
+            width: 36px; height: 36px;
+            background: var(--text-primary); color: #fff;
+            border: none; border-radius: 4px;
+            font-size: 16px; cursor: pointer;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 10001;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+        .edit-toggle.active { background: var(--accent-red); }
+        .editing-active [contenteditable="true"] {
+            outline: 2px dashed var(--accent-red-glow);
+            outline-offset: 2px;
+            cursor: text;
+        }
+        .edit-save-notice {
+            position: fixed; bottom: 20px; left: 50%;
+            transform: translateX(-50%);
+            background: var(--text-primary); color: #fff;
+            padding: 8px 20px; border-radius: 4px;
+            font-family: var(--font-body); font-size: 13px;
+            opacity: 0; transition: opacity 0.3s;
+            z-index: 10002; pointer-events: none;
+        }
+        .edit-save-notice.show { opacity: 1; }
+    </style>
+</head>
+<body>
+    <!-- Progress bar -->
+    <div class="progress-bar" id="progressBar"></div>
+    <!-- Nav dots (generated by JS) -->
+    <nav class="nav-dots" id="navDots"></nav>
+    <!-- Edit mode -->
+    <div class="edit-hotzone" id="editHotzone"></div>
+    <button class="edit-toggle" id="editToggle" title="Edit mode (E)">&#9998;</button>
+    <div class="edit-save-notice" id="saveNotice">Tersimpan!</div>
+
+    <!-- ==========================================
+         SLIDE 1 — TITLE
+         ========================================== -->
+    <section class="slide title-slide" data-slide="0">
+        <div class="accent-bar"></div>
+        <div class="bg-number">16</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Pertemuan 16</p>
+            <h1 class="reveal">Dashboard &<br><span class="highlight">Capstone Project</span></h1>
+            <p class="title-desc reveal">Streamlit + DuckDB = Dashboard interaktif. End-to-end: data &rarr; insight.</p>
+            <div class="tags reveal">
+                <span class="tag active">Streamlit</span>
+                <span class="tag">Dashboard</span>
+                <span class="tag">Capstone</span>
+                <span class="tag">End-to-End</span>
+                <span class="tag">Gratis</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 2 — SECTION: SETUP STREAMLIT
+         ========================================== -->
+    <section class="slide section-divider" data-slide="1">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 1</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Setup<br>Streamlit</h2>
+            <div class="section-num">01</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 3 — SETUP STREAMLIT DI COLAB
+         ========================================== -->
+    <section class="slide" data-slide="2">
+        <div class="accent-bar"></div>
+        <div class="bg-number">01</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Setup</p>
+            <h2 class="reveal">Setup Streamlit di Google Colab</h2>
+            <div class="steps reveal">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-title">Install</div>
+                    <div class="step-desc">!pip install streamlit duckdb &amp;&amp; npm install -g localtunnel</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-title">Writefile</div>
+                    <div class="step-desc">%%writefile app.py &rarr; tulis kode Streamlit</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div class="step-title">Run</div>
+                    <div class="step-desc">!streamlit run app.py &amp;&gt;/content/logs.txt &amp;</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">4</div>
+                    <div class="step-title">Tunnel</div>
+                    <div class="step-desc">!npx localtunnel --port 8501</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">5</div>
+                    <div class="step-title">Akses</div>
+                    <div class="step-desc">Buka URL tunnel, password = !curl ipv4.icanhazip.com</div>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Streamlit auto-reload!</strong> Edit app.py dan refresh browser untuk melihat perubahan.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 4 — ALTERNATIF DEPLOYMENT
+         ========================================== -->
+    <section class="slide" data-slide="3">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Opsi Deployment</p>
+            <h2 class="reveal">Alternatif Tanpa Colab</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>Opsi 1: Laptop Lokal</h4>
+                    <p>pip install streamlit &rarr; streamlit run app.py &rarr; buka localhost:8501. Paling simpel!</p>
+                </div>
+                <div class="info-card">
+                    <h4>Opsi 2: Streamlit Cloud</h4>
+                    <p>Push ke GitHub &rarr; share.streamlit.io &rarr; deploy otomatis. Gratis untuk public repo.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Opsi 3: HuggingFace Spaces</h4>
+                    <p>Buat Space dengan SDK Streamlit. Gratis, bisa pakai GPU juga.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Opsi 4: Colab + Localtunnel</h4>
+                    <p>Yang kita pakai hari ini. Tidak perlu install apa pun di laptop.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 5 — SECTION: STREAMLIT FRAMEWORK
+         ========================================== -->
+    <section class="slide section-divider" data-slide="4">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 2</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Streamlit<br>Framework</h2>
+            <div class="section-num">02</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 6 — API DASAR STREAMLIT
+         ========================================== -->
+    <section class="slide" data-slide="5">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Dasar</p>
+            <h2 class="reveal">API Dasar Streamlit + DuckDB</h2>
+            <div class="code-block reveal">
+                <code><span class="kw">import</span> streamlit <span class="kw">as</span> st
+<span class="kw">import</span> duckdb
+
+st.<span class="fn">title</span>(<span class="str">"Dashboard Analitik"</span>)
+st.<span class="fn">metric</span>(<span class="str">"Total Revenue"</span>, <span class="str">"Rp 12.5M"</span>, <span class="str">"+8%"</span>)
+
+<span class="cm"># Koneksi DuckDB</span>
+con = duckdb.<span class="fn">connect</span>(<span class="str">'data.duckdb'</span>)
+df = con.<span class="fn">sql</span>(<span class="str">"SELECT * FROM trips LIMIT 1000"</span>).<span class="fn">df</span>()
+
+st.<span class="fn">dataframe</span>(df)
+st.<span class="fn">bar_chart</span>(df.<span class="fn">set_index</span>(<span class="str">'kota'</span>)[<span class="str">'revenue'</span>])</code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Streamlit = Python script biasa.</strong> Tidak perlu HTML/CSS/JS. Setiap st.xxx() langsung jadi komponen UI.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 7 — LAYOUT COMPONENTS
+         ========================================== -->
+    <section class="slide" data-slide="6">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Layout</p>
+            <h2 class="reveal">Layout Components</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># Kolom sejajar</span>
+col1, col2, col3 = st.<span class="fn">columns</span>(<span class="num">3</span>)
+col1.<span class="fn">metric</span>(<span class="str">"Trips"</span>, <span class="str">"1.2M"</span>)
+col2.<span class="fn">metric</span>(<span class="str">"Revenue"</span>, <span class="str">"Rp 45B"</span>)
+col3.<span class="fn">metric</span>(<span class="str">"Rating"</span>, <span class="str">"4.7"</span>)
+
+<span class="cm"># Sidebar untuk filter</span>
+<span class="kw">with</span> st.<span class="fn">sidebar</span>:
+    kota = st.<span class="fn">selectbox</span>(<span class="str">"Kota"</span>, [<span class="str">"Jakarta"</span>, <span class="str">"Bandung"</span>])
+
+<span class="cm"># Tabs</span>
+tab1, tab2 = st.<span class="fn">tabs</span>([<span class="str">"Overview"</span>, <span class="str">"Detail"</span>])
+
+<span class="cm"># Expander &amp; Container</span>
+<span class="kw">with</span> st.<span class="fn">expander</span>(<span class="str">"Lihat SQL"</span>):
+    st.<span class="fn">code</span>(query)</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 8 — INPUT WIDGETS
+         ========================================== -->
+    <section class="slide" data-slide="7">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Widgets</p>
+            <h2 class="reveal">Input Widgets</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>st.selectbox</h4>
+                    <p>Dropdown pilihan tunggal. Cocok untuk filter kota, kategori.</p>
+                </div>
+                <div class="info-card">
+                    <h4>st.multiselect</h4>
+                    <p>Pilihan ganda. Filter beberapa kota sekaligus.</p>
+                </div>
+                <div class="info-card">
+                    <h4>st.slider</h4>
+                    <p>Range numerik. Filter rentang harga, rating.</p>
+                </div>
+                <div class="info-card">
+                    <h4>st.date_input</h4>
+                    <p>Pemilih tanggal. Filter periode waktu.</p>
+                </div>
+                <div class="info-card">
+                    <h4>st.text_area</h4>
+                    <p>Input teks panjang. SQL editor, notes.</p>
+                </div>
+                <div class="info-card">
+                    <h4>st.number_input</h4>
+                    <p>Input angka dengan step. Threshold, limit.</p>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Setiap widget otomatis reactive!</strong> Ubah input &rarr; seluruh script re-run &rarr; output update.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 9 — CHARTS & VISUALIZATION
+         ========================================== -->
+    <section class="slide" data-slide="8">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Visualisasi</p>
+            <h2 class="reveal">Charts &amp; Visualization</h2>
+            <div class="code-block reveal">
+                <code><span class="kw">import</span> plotly.express <span class="kw">as</span> px
+
+<span class="cm"># Bar chart interaktif</span>
+fig = px.<span class="fn">bar</span>(df, x=<span class="str">"kota"</span>, y=<span class="str">"revenue"</span>, color=<span class="str">"layanan"</span>)
+st.<span class="fn">plotly_chart</span>(fig, use_container_width=<span class="num">True</span>)
+
+<span class="cm"># Line chart — trend harian</span>
+fig2 = px.<span class="fn">line</span>(df_trend, x=<span class="str">"tanggal"</span>, y=<span class="str">"trips"</span>)
+
+<span class="cm"># Pie chart — proporsi</span>
+fig3 = px.<span class="fn">pie</span>(df_kota, values=<span class="str">"revenue"</span>, names=<span class="str">"kota"</span>)
+
+<span class="cm"># Quick charts (tanpa Plotly)</span>
+st.<span class="fn">bar_chart</span>(df_quick)
+st.<span class="fn">line_chart</span>(df_trend)</code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Plotly = interaktif!</strong> Hover, zoom, pan, download. st.bar_chart/line_chart untuk quick prototyping.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 10 — KPI CARDS
+         ========================================== -->
+    <section class="slide" data-slide="9">
+        <div class="accent-bar"></div>
+        <div class="bg-number">KPI</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Pattern</p>
+            <h2 class="reveal">KPI Cards Pattern</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># KPI Row dengan delta (naik/turun)</span>
+col1, col2, col3, col4 = st.<span class="fn">columns</span>(<span class="num">4</span>)
+
+col1.<span class="fn">metric</span>(
+    label=<span class="str">"Total Trips"</span>,
+    value=<span class="str">"1,234,567"</span>,
+    delta=<span class="str">"+12.3%"</span>   <span class="cm"># hijau (positif)</span>
+)
+col2.<span class="fn">metric</span>(
+    label=<span class="str">"Revenue"</span>,
+    value=<span class="str">"Rp 45.2B"</span>,
+    delta=<span class="str">"+8.1%"</span>
+)
+col3.<span class="fn">metric</span>(
+    label=<span class="str">"Avg Rating"</span>,
+    value=<span class="str">"4.72"</span>,
+    delta=<span class="str">"-0.03"</span>,
+    delta_color=<span class="str">"inverse"</span>  <span class="cm"># merah (turun)</span>
+)
+col4.<span class="fn">metric</span>(
+    label=<span class="str">"Cancel Rate"</span>,
+    value=<span class="str">"3.2%"</span>,
+    delta=<span class="str">"-0.5%"</span>,
+    delta_color=<span class="str">"inverse"</span>  <span class="cm"># hijau (turun=bagus)</span>
+)</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 11 — CACHING
+         ========================================== -->
+    <section class="slide" data-slide="10">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Performa</p>
+            <h2 class="reveal">Caching: Jangan Query Ulang!</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># Cache data — di-cache berdasarkan parameter</span>
+<span class="kw">@st.cache_data</span>
+<span class="kw">def</span> <span class="fn">load_data</span>(kota):
+    con = duckdb.<span class="fn">connect</span>(<span class="str">'data.duckdb'</span>)
+    <span class="kw">return</span> con.<span class="fn">sql</span>(<span class="str">f"SELECT * FROM trips WHERE kota='{kota}'"</span>).<span class="fn">df</span>()
+
+<span class="cm"># Cache resource — untuk koneksi DB, model ML</span>
+<span class="kw">@st.cache_resource</span>
+<span class="kw">def</span> <span class="fn">get_connection</span>():
+    <span class="kw">return</span> duckdb.<span class="fn">connect</span>(<span class="str">'data.duckdb'</span>)
+
+<span class="cm"># Tanpa cache: setiap interaksi = query ulang (lambat!)</span>
+<span class="cm"># Dengan cache: query sekali, simpan di memory</span></code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>@st.cache_data</strong> untuk DataFrame/hasil query. <strong>@st.cache_resource</strong> untuk koneksi DB &amp; model ML.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 12 — SQL EXPLORER
+         ========================================== -->
+    <section class="slide" data-slide="11">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Fitur</p>
+            <h2 class="reveal">SQL Explorer Component</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># SQL Explorer — user bisa tulis query sendiri</span>
+st.<span class="fn">subheader</span>(<span class="str">"SQL Explorer"</span>)
+
+query = st.<span class="fn">text_area</span>(
+    <span class="str">"Tulis SQL query:"</span>,
+    value=<span class="str">"SELECT kota, COUNT(*) as total\nFROM trips\nGROUP BY kota"</span>,
+    height=<span class="num">150</span>
+)
+
+<span class="kw">if</span> st.<span class="fn">button</span>(<span class="str">"Run Query"</span>):
+    <span class="kw">try</span>:
+        con = <span class="fn">get_connection</span>()
+        result = con.<span class="fn">sql</span>(query).<span class="fn">df</span>()
+        st.<span class="fn">dataframe</span>(result)
+        st.<span class="fn">download_button</span>(
+            <span class="str">"Download CSV"</span>,
+            result.<span class="fn">to_csv</span>(),
+            <span class="str">"result.csv"</span>
+        )
+    <span class="kw">except</span> Exception <span class="kw">as</span> e:
+        st.<span class="fn">error</span>(<span class="str">f"Error: {e}"</span>)</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 13 — SECTION: CAPSTONE PROJECT
+         ========================================== -->
+    <section class="slide section-divider" data-slide="12">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 3</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Capstone<br>Project</h2>
+            <div class="section-num">03</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 14 — ARSITEKTUR END-TO-END
+         ========================================== -->
+    <section class="slide" data-slide="13">
+        <div class="accent-bar"></div>
+        <div class="bg-number">E2E</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Arsitektur</p>
+            <h2 class="reveal">End-to-End: Pertemuan 9 &ndash; 16</h2>
+            <div class="steps reveal">
+                <div class="step">
+                    <div class="step-num">P9</div>
+                    <div class="step-title">DuckDB</div>
+                    <div class="step-desc">SQL query analytics</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">P10</div>
+                    <div class="step-title">BigQuery</div>
+                    <div class="step-desc">Cloud data warehouse</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">P11</div>
+                    <div class="step-title">Polars</div>
+                    <div class="step-desc">DataFrame processing</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">P12</div>
+                    <div class="step-title">dbt</div>
+                    <div class="step-desc">Data pipeline &amp; transform</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">P13</div>
+                    <div class="step-title">Streaming</div>
+                    <div class="step-desc">Real-time data</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">P14</div>
+                    <div class="step-title">Lakehouse</div>
+                    <div class="step-desc">Storage layer</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">P15</div>
+                    <div class="step-title">RAG + VectorDB</div>
+                    <div class="step-desc">AI-powered search</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">P16</div>
+                    <div class="step-title">Dashboard</div>
+                    <div class="step-desc">Streamlit visualisasi</div>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>CAPSTONE = gabungkan 3&ndash;5 komponen</strong> dari pertemuan-pertemuan ini menjadi satu proyek utuh!</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 15 — DATA STORYTELLING
+         ========================================== -->
+    <section class="slide" data-slide="14">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Prinsip</p>
+            <h2 class="reveal">Data Storytelling untuk Dashboard</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>1. Fokus KPI Utama</h4>
+                    <p>Tampilkan 3&ndash;5 metrik kunci di bagian atas. Jangan lebih dari 7.</p>
+                </div>
+                <div class="info-card">
+                    <h4>2. Minimalisir Clutter</h4>
+                    <p>Hapus elemen dekoratif yang tidak menambah informasi. White space = bagus.</p>
+                </div>
+                <div class="info-card">
+                    <h4>3. Chart yang Tepat</h4>
+                    <p>Bar = perbandingan. Line = trend. Pie = proporsi (max 5 slice). Jangan 3D!</p>
+                </div>
+                <div class="info-card">
+                    <h4>4. Enable Drill-Down</h4>
+                    <p>Overview dulu, lalu detail. Filter &amp; tab untuk eksplorasi lebih dalam.</p>
+                </div>
+                <div class="info-card">
+                    <h4>5. Desain untuk Audiens</h4>
+                    <p>Eksekutif = KPI ringkas. Analis = detail + SQL explorer. Developer = API &amp; log.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 16 — CAPSTONE OPSI A
+         ========================================== -->
+    <section class="slide" data-slide="15">
+        <div class="accent-bar"></div>
+        <div class="bg-number">A</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Capstone Opsi A</p>
+            <h2 class="reveal">E-Commerce Analytics Dashboard</h2>
+            <div class="steps reveal">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-title">Data Source</div>
+                    <div class="step-desc">Dataset e-commerce (Tokopedia/Shopee open data atau synthetic)</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-title">DuckDB Query</div>
+                    <div class="step-desc">Load &amp; analisis data dengan SQL (P9)</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div class="step-title">dbt Pipeline</div>
+                    <div class="step-desc">Transform: staging &rarr; marts &rarr; metrics (P12)</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">4</div>
+                    <div class="step-title">Dashboard</div>
+                    <div class="step-desc">Streamlit: KPI, charts, filter (P16)</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">5</div>
+                    <div class="step-title">Chatbot</div>
+                    <div class="step-desc">RAG untuk tanya-jawab data (P15)</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 17 — CAPSTONE OPSI B
+         ========================================== -->
+    <section class="slide" data-slide="16">
+        <div class="accent-bar"></div>
+        <div class="bg-number">B</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Capstone Opsi B</p>
+            <h2 class="reveal">IoT Monitoring Dashboard</h2>
+            <div class="steps reveal">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-title">Sensor Data</div>
+                    <div class="step-desc">Generate data suhu, kelembaban, tekanan (synthetic)</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-title">Streaming</div>
+                    <div class="step-desc">Simulasi real-time stream (P13)</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div class="step-title">Anomaly Detection</div>
+                    <div class="step-desc">Z-score / threshold-based alerting</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">4</div>
+                    <div class="step-title">Dashboard</div>
+                    <div class="step-desc">Real-time chart + alert panel (P16)</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">5</div>
+                    <div class="step-title">Storage</div>
+                    <div class="step-desc">Lakehouse: Delta/Iceberg format (P14)</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 18 — CAPSTONE OPSI C
+         ========================================== -->
+    <section class="slide" data-slide="17">
+        <div class="accent-bar"></div>
+        <div class="bg-number">C</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Capstone Opsi C</p>
+            <h2 class="reveal">Social Media Intelligence</h2>
+            <div class="steps reveal">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-title">Data Stream</div>
+                    <div class="step-desc">Scraping/API sosial media &rarr; streaming ingest (P13)</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-title">Trending</div>
+                    <div class="step-desc">Analisis trending topics &amp; hashtag (DuckDB/Polars)</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div class="step-title">Sentiment</div>
+                    <div class="step-desc">Sentiment analysis dengan LLM/model (P15)</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">4</div>
+                    <div class="step-title">Dashboard</div>
+                    <div class="step-desc">Visualisasi sentiment &amp; trend (P16)</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">5</div>
+                    <div class="step-title">Chatbot</div>
+                    <div class="step-desc">RAG chatbot untuk insight media sosial (P15)</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 19 — CAPSTONE DELIVERABLES
+         ========================================== -->
+    <section class="slide" data-slide="18">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Deliverables</p>
+            <h2 class="reveal">Capstone: Yang Harus Dikumpulkan</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>1. Architecture Diagram</h4>
+                    <p>Gambar arsitektur end-to-end: data source &rarr; processing &rarr; storage &rarr; dashboard. Tools apa saja yang dipakai.</p>
+                </div>
+                <div class="info-card">
+                    <h4>2. Working Code</h4>
+                    <p>Notebook Colab (.ipynb) atau GitHub repo. Harus bisa di-run dari awal hingga akhir.</p>
+                </div>
+                <div class="info-card">
+                    <h4>3. Presentasi 10 Menit</h4>
+                    <p>Slide: masalah &rarr; arsitektur &rarr; demo &rarr; insight &rarr; kesimpulan.</p>
+                </div>
+                <div class="info-card">
+                    <h4>4. Live Demo</h4>
+                    <p>Demo dashboard Streamlit berjalan. Tunjukkan interaksi: filter, chart, query.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 20 — PENILAIAN
+         ========================================== -->
+    <section class="slide" data-slide="19">
+        <div class="accent-bar"></div>
+        <div class="bg-number">%</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Penilaian</p>
+            <h2 class="reveal">Rubrik Penilaian Capstone</h2>
+            <table class="data-table reveal">
+                <thead>
+                    <tr><th>Komponen</th><th>Bobot</th><th>Deskripsi</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Architecture</td><td>30%</td><td>Desain arsitektur end-to-end, pemilihan tools yang tepat, diagram jelas</td></tr>
+                    <tr><td>Implementation</td><td>40%</td><td>Kode berjalan, data pipeline berfungsi, dashboard interaktif</td></tr>
+                    <tr><td>Presentation</td><td>20%</td><td>Storytelling, kejelasan slide, live demo lancar</td></tr>
+                    <tr><td>Creativity</td><td>10%</td><td>Inovasi: fitur tambahan, dataset unik, UX yang baik</td></tr>
+                </tbody>
+            </table>
+            <div class="tip-box reveal">
+                <p><strong>Minimum 3 komponen</strong> dari P9&ndash;P16. Semakin banyak komponen yang terintegrasi = semakin tinggi nilai Architecture.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 21 — TIMELINE & MILESTONES
+         ========================================== -->
+    <section class="slide" data-slide="20">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Timeline</p>
+            <h2 class="reveal">Timeline &amp; Milestones</h2>
+            <div class="steps reveal">
+                <div class="step">
+                    <div class="step-num">W1</div>
+                    <div class="step-title">Proposal</div>
+                    <div class="step-desc">Pilih opsi (A/B/C), tentukan dataset, buat architecture diagram awal</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">W2</div>
+                    <div class="step-title">Data Pipeline</div>
+                    <div class="step-desc">Data ingestion + transformation berjalan (DuckDB, dbt, Polars)</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">W3</div>
+                    <div class="step-title">Dashboard</div>
+                    <div class="step-desc">Streamlit dashboard dengan KPI, charts, dan filter</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">W4</div>
+                    <div class="step-title">Polish + Present</div>
+                    <div class="step-desc">Finalisasi, siapkan slide presentasi, latihan demo</div>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Format Submission:</strong> GitHub repo (public) ATAU Google Colab notebook + slide presentasi (PDF/PPTX).</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 22 — MODERN BIG DATA STACK SUMMARY
+         ========================================== -->
+    <section class="slide" data-slide="21">
+        <div class="accent-bar"></div>
+        <div class="bg-number">&#9733;</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Rekap Semester</p>
+            <h2 class="reveal">Modern Big Data Stack 2025</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>Query Engine</h4>
+                    <p>DuckDB (lokal) + BigQuery (cloud). SQL untuk analytics skala besar.</p>
+                </div>
+                <div class="info-card">
+                    <h4>DataFrame</h4>
+                    <p>Polars &mdash; Rust-powered, 10&ndash;50x lebih cepat dari Pandas.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Pipeline</h4>
+                    <p>dbt &mdash; SQL-first transformation. Version control &amp; testing.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Streaming</h4>
+                    <p>Real-time data ingestion &amp; processing.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Storage</h4>
+                    <p>Lakehouse (Delta Lake / Apache Iceberg). ACID + Parquet.</p>
+                </div>
+                <div class="info-card">
+                    <h4>AI Layer</h4>
+                    <p>RAG + VectorDB. Semantic search &amp; LLM-powered insights.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Dashboard</h4>
+                    <p>Streamlit &mdash; Python-only, interaktif, deploy gratis.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 23 — SECTION: TIPS & KESALAHAN UMUM
+         ========================================== -->
+    <section class="slide section-divider" data-slide="22">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 4</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Tips &<br>Kesalahan Umum</h2>
+            <div class="section-num">04</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 24 — TIPS DASHBOARD
+         ========================================== -->
+    <section class="slide" data-slide="23">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Tips</p>
+            <h2 class="reveal">Tips Dashboard Profesional</h2>
+            <ul class="content-list reveal">
+                <li><strong>Responsive Layout:</strong> Gunakan st.columns() agar tampilan rapi di berbagai layar. Test di mobile!</li>
+                <li><strong>Caching Wajib:</strong> @st.cache_data untuk semua query. Tanpa cache, dashboard lambat setiap klik.</li>
+                <li><strong>Error Handling:</strong> Bungkus query dengan try/except. Tampilkan st.error() yang informatif.</li>
+                <li><strong>Loading State:</strong> Gunakan st.spinner("Loading...") saat proses berat berjalan.</li>
+                <li><strong>Jangan Overload:</strong> Maksimal 4&ndash;6 chart per halaman. Gunakan tabs untuk organisasi.</li>
+                <li><strong>Gunakan st.set_page_config():</strong> Set layout="wide", page_title, page_icon di baris pertama.</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 25 — KESALAHAN UMUM CAPSTONE
+         ========================================== -->
+    <section class="slide" data-slide="24">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Hindari</p>
+            <h2 class="reveal">Kesalahan Umum Capstone</h2>
+            <ul class="content-list reveal">
+                <li><strong>Terlalu ambisius:</strong> Pilih scope yang realistis. Lebih baik 3 komponen yang berfungsi sempurna daripada 7 setengah jadi.</li>
+                <li><strong>Tidak ada architecture diagram:</strong> Tanpa diagram, penilai tidak mengerti flow data Anda.</li>
+                <li><strong>Code tidak reproducible:</strong> Pastikan bisa di-run dari nol. Sertakan requirements.txt / pip install di cell pertama.</li>
+                <li><strong>Dashboard tanpa insight:</strong> Jangan hanya tampilkan data mentah. Berikan interpretasi dan highlight temuan menarik.</li>
+                <li><strong>Tidak latihan demo:</strong> Demo gagal = nilai presentasi turun drastis. Siapkan backup screenshot.</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 26 — DISKUSI
+         ========================================== -->
+    <section class="slide" data-slide="25">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Refleksi</p>
+            <h2 class="reveal">Diskusi &amp; Pertanyaan</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>Q1</h4>
+                    <p>Apa keuntungan Streamlit dibanding Tableau/PowerBI? (gratis, Python-native, kustomisasi penuh)</p>
+                </div>
+                <div class="info-card">
+                    <h4>Q2</h4>
+                    <p>Bagaimana strategi memilih komponen untuk capstone? (mulai dari masalah, bukan tools)</p>
+                </div>
+                <div class="info-card">
+                    <h4>Q3</h4>
+                    <p>Kenapa caching penting di dashboard? (setiap interaksi = re-run seluruh script)</p>
+                </div>
+                <div class="info-card">
+                    <h4>Q4</h4>
+                    <p>Apa perbedaan dashboard untuk eksekutif vs analis? (ringkasan vs detail + drill-down)</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 27 — RINGKASAN
+         ========================================== -->
+    <section class="slide" data-slide="26">
+        <div class="accent-bar"></div>
+        <div class="bg-number">&#10003;</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Ringkasan</p>
+            <h2 class="reveal">Apa yang Sudah Kita Pelajari</h2>
+            <ul class="content-list reveal">
+                <li><strong>Streamlit</strong> = framework dashboard Python-only. Setup mudah, deploy gratis, interaktif.</li>
+                <li><strong>Layout</strong> = columns, sidebar, tabs, expander untuk organisasi dashboard.</li>
+                <li><strong>Caching</strong> = @st.cache_data &amp; @st.cache_resource untuk performa optimal.</li>
+                <li><strong>Plotly</strong> = chart interaktif (hover, zoom, download). st.plotly_chart().</li>
+                <li><strong>Capstone</strong> = gabungkan 3&ndash;5 komponen dari P9&ndash;P16 menjadi proyek end-to-end.</li>
+                <li><strong>Modern Big Data Stack</strong> = DuckDB, BigQuery, Polars, dbt, Streaming, Lakehouse, RAG, Streamlit.</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 28 — PENUTUP
+         ========================================== -->
+    <section class="slide" data-slide="27">
+        <div class="accent-bar"></div>
+        <div class="bg-number">&#9734;</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Penutup</p>
+            <h2 class="reveal">Selamat Menyelesaikan<br><span class="highlight">Big Data!</span></h2>
+            <p class="reveal" style="max-width: 600px; margin-bottom: var(--content-gap);">Dari Pertemuan 9 hingga 16, Anda telah mempelajari seluruh Modern Big Data Stack: dari query engine hingga dashboard. Sekarang saatnya membuktikan kemampuan Anda melalui Capstone Project!</p>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>Skill yang Dikuasai</h4>
+                    <p>SQL Analytics, Cloud DWH, DataFrame, Pipeline, Streaming, Lakehouse, AI/RAG, Dashboard</p>
+                </div>
+                <div class="info-card">
+                    <h4>Next Steps</h4>
+                    <p>Capstone Project &rarr; Portfolio GitHub &rarr; Siap magang/kerja di bidang Data Engineering!</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 29 — SECTION: STUDI KASUS & TUGAS
+         ========================================== -->
+    <section class="slide section-divider" data-slide="28">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 5</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Studi Kasus<br>&amp; Tugas</h2>
+            <div class="section-num">05</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 30 — TUGAS: JAKARTA OPEN DATA + BPS
+         ========================================== -->
+    <section class="slide" data-slide="29">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Tugas</p>
+            <h2 class="reveal">Jakarta Open Data + BPS Dashboard</h2>
+            <div class="two-col reveal">
+                <div>
+                    <h3 style="font-size: clamp(0.8rem, 1.2vw, 1rem); margin-bottom: var(--element-gap);">Dataset A: Jakarta Open Data</h3>
+                    <ul class="content-list">
+                        <li>Download data dari data.jakarta.go.id</li>
+                        <li>Load ke DuckDB, buat 3+ query analitik</li>
+                        <li>Dashboard Streamlit: KPI cards + 2 chart</li>
+                        <li>Tambahkan filter (sidebar): wilayah, tahun</li>
+                        <li>SQL Explorer agar user bisa query sendiri</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 style="font-size: clamp(0.8rem, 1.2vw, 1rem); margin-bottom: var(--element-gap);">Dataset B: BPS (bps.go.id)</h3>
+                    <ul class="content-list">
+                        <li>Data statistik: penduduk, ekonomi, atau sosial</li>
+                        <li>Bandingkan antar provinsi / tahun</li>
+                        <li>Trend line + bar chart perbandingan</li>
+                        <li>Download button untuk hasil analisis</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Kumpulkan:</strong> Notebook (.ipynb) + app.py + screenshot dashboard. Bonus: deploy ke Streamlit Cloud!</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 31 — REFERENSI
+         ========================================== -->
+    <section class="slide" data-slide="30">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Referensi</p>
+            <h2 class="reveal">Bahan Belajar Mandiri</h2>
+            <ul class="content-list reveal">
+                <li><strong>Streamlit Docs:</strong> docs.streamlit.io</li>
+                <li><strong>Streamlit Gallery:</strong> streamlit.io/gallery &mdash; contoh dashboard siap pakai</li>
+                <li><strong>DuckDB + Streamlit:</strong> motherduck.com/blog/duckdb-streamlit-dashboard/</li>
+                <li><strong>Plotly Docs:</strong> plotly.com/python/ &mdash; chart interaktif</li>
+                <li><strong>Jakarta Open Data:</strong> data.jakarta.go.id</li>
+                <li><strong>BPS:</strong> bps.go.id &mdash; Badan Pusat Statistik Indonesia</li>
+                <li><strong>Buku:</strong> Joe Reis &amp; Matt Housley &mdash; Fundamentals of Data Engineering (O'Reilly)</li>
+                <li><strong>Zoomcamp:</strong> github.com/DataTalksClub/data-engineering-zoomcamp</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ===========================================
+         JAVASCRIPT: Presentation Controller
+         =========================================== -->
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.isScrolling = false;
+                this.setupIntersectionObserver();
+                this.setupKeyboardNav();
+                this.setupTouchNav();
+                this.setupWheelNav();
+                this.setupProgressBar();
+                this.setupNavDots();
+            }
+
+            setupIntersectionObserver() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            const idx = Array.from(this.slides).indexOf(entry.target);
+                            if (idx !== -1) {
+                                this.currentSlide = idx;
+                                this.updateProgressBar();
+                                this.updateNavDots();
+                            }
+                        }
+                    });
+                }, { threshold: 0.5 });
+                this.slides.forEach(slide => observer.observe(slide));
+            }
+
+            goToSlide(index) {
+                if (index >= 0 && index < this.slides.length) {
+                    this.slides[index].scrollIntoView({ behavior: 'smooth' });
+                    this.currentSlide = index;
+                    this.updateProgressBar();
+                    this.updateNavDots();
+                }
+            }
+
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.target.getAttribute && e.target.getAttribute('contenteditable') === 'true') return;
+                    switch(e.key) {
+                        case 'ArrowDown': case 'ArrowRight': case ' ': case 'PageDown':
+                            e.preventDefault(); this.goToSlide(this.currentSlide + 1); break;
+                        case 'ArrowUp': case 'ArrowLeft': case 'PageUp':
+                            e.preventDefault(); this.goToSlide(this.currentSlide - 1); break;
+                        case 'Home': e.preventDefault(); this.goToSlide(0); break;
+                        case 'End': e.preventDefault(); this.goToSlide(this.slides.length - 1); break;
+                    }
+                });
+            }
+
+            setupTouchNav() {
+                let startY = 0;
+                document.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; }, { passive: true });
+                document.addEventListener('touchend', (e) => {
+                    const diff = startY - e.changedTouches[0].clientY;
+                    if (Math.abs(diff) > 50) {
+                        diff > 0 ? this.goToSlide(this.currentSlide + 1) : this.goToSlide(this.currentSlide - 1);
+                    }
+                }, { passive: true });
+            }
+
+            setupWheelNav() {
+                let timeout;
+                document.addEventListener('wheel', (e) => {
+                    if (this.isScrolling) return;
+                    this.isScrolling = true;
+                    clearTimeout(timeout);
+                    if (e.deltaY > 30) this.goToSlide(this.currentSlide + 1);
+                    else if (e.deltaY < -30) this.goToSlide(this.currentSlide - 1);
+                    timeout = setTimeout(() => { this.isScrolling = false; }, 800);
+                }, { passive: true });
+            }
+
+            setupProgressBar() {
+                this.progressBar = document.getElementById('progressBar');
+                this.updateProgressBar();
+            }
+
+            updateProgressBar() {
+                const pct = ((this.currentSlide + 1) / this.slides.length) * 100;
+                if (this.progressBar) this.progressBar.style.width = pct + '%';
+            }
+
+            setupNavDots() {
+                const container = document.getElementById('navDots');
+                if (!container) return;
+                this.slides.forEach((_, i) => {
+                    const dot = document.createElement('button');
+                    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+                    dot.addEventListener('click', () => this.goToSlide(i));
+                    dot.setAttribute('aria-label', `Slide ${i + 1}`);
+                    container.appendChild(dot);
+                });
+                this.dots = container.querySelectorAll('.nav-dot');
+            }
+
+            updateNavDots() {
+                if (!this.dots) return;
+                this.dots.forEach((dot, i) => {
+                    dot.classList.toggle('active', i === this.currentSlide);
+                });
+            }
+        }
+
+        /* ===========================================
+           INLINE EDITOR
+           =========================================== */
+        class InlineEditor {
+            constructor() {
+                this.isActive = false;
+                this.storageKey = 'slides-p16-edits';
+                this.loadEdits();
+            }
+
+            toggleEditMode() {
+                this.isActive = !this.isActive;
+                document.body.classList.toggle('editing-active', this.isActive);
+                document.getElementById('editToggle').classList.toggle('active', this.isActive);
+                const editables = document.querySelectorAll('h1,h2,h3,h4,p,li,span,.step-desc,.step-title,.tag');
+                editables.forEach(el => {
+                    if (el.closest('.nav-dots') || el.closest('.edit-toggle')) return;
+                    el.contentEditable = this.isActive ? 'true' : 'false';
+                });
+                if (this.isActive) {
+                    document.addEventListener('input', this._saveHandler = () => this.saveEdits());
+                } else {
+                    document.removeEventListener('input', this._saveHandler);
+                    this.saveEdits();
+                }
+            }
+
+            saveEdits() {
+                const data = {};
+                document.querySelectorAll('.slide').forEach((slide, i) => {
+                    data[i] = slide.innerHTML;
+                });
+                try { localStorage.setItem(this.storageKey, JSON.stringify(data)); } catch(e) {}
+                const notice = document.getElementById('saveNotice');
+                notice.classList.add('show');
+                setTimeout(() => notice.classList.remove('show'), 1200);
+            }
+
+            loadEdits() {
+                try {
+                    const data = JSON.parse(localStorage.getItem(this.storageKey));
+                    if (!data) return;
+                    document.querySelectorAll('.slide').forEach((slide, i) => {
+                        if (data[i]) slide.innerHTML = data[i];
+                    });
+                } catch(e) {}
+            }
+        }
+
+        /* Init */
+        const presentation = new SlidePresentation();
+        const editor = new InlineEditor();
+
+        /* Edit hotzone + toggle */
+        const hotzone = document.getElementById('editHotzone');
+        const editToggle = document.getElementById('editToggle');
+        let hideTimeout = null;
+        hotzone.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); editToggle.classList.add('show'); });
+        hotzone.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+        editToggle.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); });
+        editToggle.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+        editToggle.addEventListener('click', () => editor.toggleEditMode());
+        hotzone.addEventListener('click', () => editor.toggleEditMode());
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) editor.toggleEditMode();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1608 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pertemuan 12 — dbt: Data Pipeline Modern</title>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;800&family=Nunito:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES — SWISS MODERN THEME
+           =========================================== */
+        :root {
+            --bg-white: #ffffff;
+            --bg-light: #f8f8f8;
+            --text-primary: #0a0a0a;
+            --text-secondary: #555;
+            --text-muted: #888;
+            --accent-red: #ff3300;
+            --accent-red-light: rgba(255, 51, 0, 0.08);
+            --accent-red-glow: rgba(255, 51, 0, 0.15);
+            --grid-color: rgba(0,0,0,0.05);
+            --border-color: rgba(0,0,0,0.1);
+            --font-display: 'Archivo', sans-serif;
+            --font-body: 'Nunito', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration-normal: 0.6s;
+
+            --title-size: clamp(2.2rem, 6vw, 5rem);
+            --h2-size: clamp(1.8rem, 4.5vw, 3.2rem);
+            --h3-size: clamp(1.3rem, 3vw, 2.2rem);
+            --body-size: clamp(1rem, 2vw, 1.5rem);
+            --small-size: clamp(0.85rem, 1.4vw, 1.15rem);
+            --slide-padding: clamp(1rem, 3vw, 2.5rem);
+            --content-gap: clamp(0.5rem, 1.5vw, 1.5rem);
+            --element-gap: clamp(0.25rem, 0.8vw, 0.75rem);
+        }
+
+        /* ===========================================
+           BASE RESET
+           =========================================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ===========================================
+           VIEWPORT FITTING — MANDATORY BASE STYLES
+           =========================================== */
+        html, body { height: 100%; overflow-x: hidden; }
+        html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+
+        .slide {
+            width: 100vw; height: 100vh; height: 100dvh;
+            overflow: hidden; scroll-snap-align: start;
+            display: flex; flex-direction: column; position: relative;
+        }
+        .slide-content {
+            flex: 1; display: flex; flex-direction: column; justify-content: center;
+            max-height: 100%; overflow: hidden;
+            padding: clamp(1.5rem, 3vh, 3rem) var(--slide-padding);
+            padding-left: clamp(2.5rem, 5vw, 5rem);
+            padding-right: clamp(2rem, 4vw, 4rem);
+        }
+        .card, .container, .content-box {
+            max-width: min(95vw, 1200px); max-height: min(90vh, 800px);
+        }
+        .feature-list, .bullet-list { gap: clamp(0.4rem, 1vh, 1rem); }
+        .feature-list li, .bullet-list li { font-size: var(--body-size); line-height: 1.4; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+            gap: clamp(0.5rem, 1.5vw, 1rem);
+        }
+        img, .image-container { max-width: 100%; max-height: min(50vh, 400px); object-fit: contain; }
+
+        @media (max-height: 700px) {
+            :root {
+                --slide-padding: clamp(0.75rem, 2vw, 1.5rem);
+                --content-gap: clamp(0.4rem, 1vw, 0.8rem);
+                --title-size: clamp(1.6rem, 5vw, 3rem);
+                --h2-size: clamp(1.3rem, 3.5vw, 2.2rem);
+                --body-size: clamp(0.85rem, 1.6vw, 1.2rem);
+            }
+        }
+        @media (max-height: 600px) {
+            :root {
+                --slide-padding: clamp(0.5rem, 1.5vw, 1rem);
+                --content-gap: clamp(0.3rem, 0.8vw, 0.6rem);
+                --title-size: clamp(1.4rem, 4.5vw, 2.5rem);
+                --body-size: clamp(0.8rem, 1.4vw, 1.1rem);
+            }
+            .nav-dots, .keyboard-hint, .decorative { display: none; }
+        }
+        @media (max-height: 500px) {
+            :root {
+                --slide-padding: clamp(0.4rem, 1.5vw, 0.8rem);
+                --title-size: clamp(1.2rem, 4vw, 2rem);
+                --h2-size: clamp(1rem, 3vw, 1.5rem);
+                --body-size: clamp(0.75rem, 1.2vw, 1rem);
+            }
+        }
+        @media (max-width: 600px) {
+            :root { --title-size: clamp(1.5rem, 8vw, 3rem); }
+            .grid { grid-template-columns: 1fr; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.2s !important;
+            }
+            html { scroll-behavior: auto; }
+        }
+
+        /* ===========================================
+           SWISS MODERN — GRID BACKGROUND
+           =========================================== */
+        .slide::before {
+            content: '';
+            position: absolute; inset: 0;
+            background-image:
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: clamp(30px, 5vw, 60px) clamp(30px, 5vw, 60px);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .slide > * { position: relative; z-index: 1; }
+
+        /* ===========================================
+           ACCENT BAR (left edge)
+           =========================================== */
+        .accent-bar {
+            position: absolute; left: 0; top: 0; bottom: 0;
+            width: clamp(4px, 0.5vw, 6px);
+            background: var(--accent-red);
+            z-index: 2;
+        }
+
+        /* ===========================================
+           TYPOGRAPHY
+           =========================================== */
+        body { font-family: var(--font-body); color: var(--text-primary); background: var(--bg-white); }
+
+        h1, h2, h3 { font-family: var(--font-display); font-weight: 800; line-height: 1.1; }
+        h1 { font-size: var(--title-size); }
+        h2 { font-size: var(--h2-size); margin-bottom: var(--content-gap); }
+        h3 { font-size: var(--h3-size); }
+        p, li { font-size: var(--body-size); line-height: 1.6; color: var(--text-secondary); }
+        .highlight { color: var(--accent-red); }
+        .tag-label {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(0.8rem, 1.3vw, 1.1rem);
+            color: var(--accent-red); text-transform: uppercase; letter-spacing: 0.2em;
+            margin-bottom: var(--element-gap);
+        }
+
+        /* ===========================================
+           LARGE BACKGROUND NUMBER
+           =========================================== */
+        .bg-number {
+            position: absolute;
+            right: clamp(1rem, 4vw, 4rem);
+            top: clamp(0.5rem, 2vh, 2rem);
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(5rem, 15vw, 12rem);
+            color: rgba(0,0,0,0.03);
+            line-height: 1; z-index: 0; pointer-events: none;
+        }
+
+        /* ===========================================
+           SECTION DIVIDER SLIDES
+           =========================================== */
+        .slide.section-divider {
+            background: var(--text-primary);
+        }
+        .slide.section-divider::before {
+            background-image:
+                linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+        }
+        .slide.section-divider .accent-bar { background: var(--accent-red); }
+        .slide.section-divider h2 { color: #fff; }
+        .slide.section-divider .section-num {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(4rem, 12vw, 10rem);
+            color: rgba(255,255,255,0.06);
+            position: absolute;
+            right: clamp(2rem, 6vw, 6rem);
+            bottom: clamp(1rem, 4vh, 4rem);
+        }
+        .slide.section-divider .tag-label { color: var(--accent-red); }
+
+        /* ===========================================
+           TITLE SLIDE
+           =========================================== */
+        .slide.title-slide { background: var(--bg-white); }
+        .title-meta {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+            color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em;
+            margin-bottom: clamp(0.5rem, 1vh, 1rem);
+        }
+        .title-slide h1 {
+            font-size: clamp(2.5rem, 6.5vw, 5.5rem);
+            margin-bottom: clamp(0.5rem, 1.5vh, 1.5rem);
+        }
+        .title-desc {
+            font-size: clamp(1.1rem, 2vw, 1.5rem);
+            color: var(--text-secondary);
+            max-width: 700px; line-height: 1.6;
+            margin-bottom: clamp(0.75rem, 2vh, 1.5rem);
+        }
+        .tags {
+            display: flex; gap: clamp(8px, 1vw, 14px); flex-wrap: wrap;
+        }
+        .tag {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.7rem, 1.1vw, 0.95rem);
+            text-transform: uppercase; letter-spacing: 0.08em;
+            padding: clamp(4px, 0.6vh, 8px) clamp(10px, 1.2vw, 18px);
+            border: 2px solid var(--text-primary);
+            color: var(--text-primary);
+        }
+        .tag.active { background: var(--text-primary); color: var(--bg-white); }
+
+        /* ===========================================
+           CONTENT COMPONENTS
+           =========================================== */
+        /* Comparison columns */
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: clamp(1rem, 3vw, 3rem);
+            margin-top: var(--content-gap);
+        }
+        @media (max-width: 600px) { .comparison { grid-template-columns: 1fr; } }
+        .comparison-col h3 {
+            font-size: clamp(1.1rem, 1.8vw, 1.5rem);
+            margin-bottom: var(--element-gap);
+            padding-bottom: var(--element-gap);
+            border-bottom: 3px solid var(--accent-red);
+        }
+        .comparison-col.alt h3 { border-bottom-color: var(--text-primary); }
+        .comparison-col ul { list-style: none; }
+        .comparison-col li {
+            font-size: clamp(0.9rem, 1.4vw, 1.2rem);
+            padding: clamp(3px, 0.4vh, 6px) 0;
+            padding-left: 1.2em;
+            position: relative;
+        }
+        .comparison-col li::before {
+            content: '→';
+            position: absolute; left: 0;
+            color: var(--accent-red);
+            font-weight: 700;
+        }
+
+        /* Steps */
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+            gap: clamp(0.5rem, 1.5vw, 1.5rem);
+            margin-top: var(--content-gap);
+        }
+        .step {
+            border-left: 3px solid var(--accent-red);
+            padding-left: clamp(0.5rem, 1vw, 1rem);
+        }
+        .step-num {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(1.5rem, 2.5vw, 2.2rem);
+            color: var(--accent-red); line-height: 1;
+        }
+        .step-title {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.9rem, 1.4vw, 1.2rem);
+            color: var(--text-primary);
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin: clamp(2px, 0.3vh, 4px) 0;
+        }
+        .step-desc {
+            font-size: clamp(0.85rem, 1.3vw, 1.1rem);
+            color: var(--text-secondary);
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: #1a1a1a;
+            border-radius: 4px;
+            padding: clamp(0.5rem, 1.5vw, 1.5rem);
+            margin-top: var(--element-gap);
+            overflow-x: auto;
+            max-height: min(45vh, 350px);
+        }
+        .code-block code {
+            font-family: var(--font-mono);
+            font-size: clamp(0.85rem, 1.4vw, 1.15rem);
+            color: #e0e0e0; line-height: 1.5;
+            white-space: pre;
+        }
+        .code-block .kw { color: #ff7b72; }
+        .code-block .fn { color: #d2a8ff; }
+        .code-block .str { color: #a5d6ff; }
+        .code-block .cm { color: #8b949e; }
+        .code-block .num { color: #79c0ff; }
+
+        /* Info cards */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+            gap: clamp(0.5rem, 1vw, 1rem);
+            margin-top: var(--content-gap);
+        }
+        .info-card {
+            padding: clamp(0.5rem, 1.5vw, 1.5rem);
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+        .info-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0;
+            height: 3px; background: var(--accent-red);
+        }
+        .info-card h4 {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(0.95rem, 1.5vw, 1.25rem);
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin-bottom: clamp(2px, 0.5vh, 6px);
+        }
+        .info-card p { font-size: clamp(0.9rem, 1.3vw, 1.15rem); }
+
+        /* Benchmark bars */
+        .bench-row {
+            display: flex; align-items: center;
+            gap: clamp(0.5rem, 1vw, 1rem);
+            margin-bottom: clamp(0.3rem, 0.5vh, 0.5rem);
+        }
+        .bench-label {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+            min-width: clamp(70px, 10vw, 120px);
+            text-align: right;
+        }
+        .bench-bar {
+            height: clamp(28px, 4vh, 40px);
+            background: var(--accent-red);
+            border-radius: 2px;
+            display: flex; align-items: center;
+            padding-left: clamp(6px, 0.8vw, 12px);
+            transition: width 1s var(--ease-out-expo);
+        }
+        .bench-bar.alt { background: var(--text-primary); }
+        .bench-bar span {
+            font-family: var(--font-mono);
+            font-size: clamp(0.75rem, 1.1vw, 1rem);
+            color: #fff; white-space: nowrap;
+            font-weight: 500;
+        }
+        .bench-speedup {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(1rem, 1.5vw, 1.3rem);
+            color: var(--accent-red);
+        }
+
+        /* Bullet list */
+        .content-list {
+            list-style: none;
+            margin-top: var(--element-gap);
+        }
+        .content-list li {
+            padding: clamp(3px, 0.5vh, 6px) 0;
+            padding-left: 1.5em; position: relative;
+            font-size: var(--body-size);
+        }
+        .content-list li::before {
+            content: ''; position: absolute;
+            left: 0; top: clamp(10px, 1.2vh, 14px);
+            width: 8px; height: 3px;
+            background: var(--accent-red);
+        }
+
+        /* Tip/warning box */
+        .tip-box {
+            border-left: 4px solid var(--accent-red);
+            background: var(--accent-red-light);
+            padding: clamp(0.5rem, 1vw, 1rem);
+            margin-top: var(--element-gap);
+        }
+        .tip-box p { font-size: clamp(0.9rem, 1.4vw, 1.2rem); color: var(--text-primary); }
+        .tip-box strong { color: var(--accent-red); }
+
+        /* Table */
+        .data-table {
+            width: 100%; border-collapse: collapse;
+            margin-top: var(--element-gap);
+            font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+        }
+        .data-table th {
+            font-family: var(--font-display); font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            font-size: clamp(0.8rem, 1.2vw, 1.05rem);
+            text-align: left;
+            padding: clamp(6px, 0.8vh, 12px) clamp(8px, 1.2vw, 16px);
+            border-bottom: 2px solid var(--text-primary);
+            color: var(--text-primary);
+        }
+        .data-table td {
+            padding: clamp(5px, 0.7vh, 10px) clamp(8px, 1.2vw, 16px);
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+        .data-table td:first-child { font-weight: 600; color: var(--text-primary); }
+
+        /* Two column layout */
+        .two-col {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: clamp(1rem, 3vw, 3rem);
+            margin-top: var(--content-gap);
+        }
+        @media (max-width: 600px) { .two-col { grid-template-columns: 1fr; } }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal {
+            opacity: 0; transform: translateY(20px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .reveal-left {
+            opacity: 0; transform: translateX(-30px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .slide.visible .reveal,
+        .slide.visible .reveal-left {
+            opacity: 1; transform: translate(0);
+        }
+        .slide.visible .reveal:nth-child(1) { transition-delay: 0.05s; }
+        .slide.visible .reveal:nth-child(2) { transition-delay: 0.1s; }
+        .slide.visible .reveal:nth-child(3) { transition-delay: 0.15s; }
+        .slide.visible .reveal:nth-child(4) { transition-delay: 0.2s; }
+        .slide.visible .reveal:nth-child(5) { transition-delay: 0.25s; }
+        .slide.visible .reveal:nth-child(6) { transition-delay: 0.3s; }
+
+        /* ===========================================
+           PROGRESS BAR
+           =========================================== */
+        .progress-bar {
+            position: fixed; top: 0; left: 0;
+            height: 3px; background: var(--accent-red);
+            z-index: 9999; transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        /* ===========================================
+           NAV DOTS
+           =========================================== */
+        .nav-dots {
+            position: fixed; right: clamp(8px, 1vw, 16px);
+            top: 50%; transform: translateY(-50%);
+            display: flex; flex-direction: column;
+            gap: clamp(4px, 0.5vh, 8px); z-index: 9998;
+        }
+        .nav-dot {
+            width: clamp(6px, 0.5vw, 8px); height: clamp(6px, 0.5vw, 8px);
+            background: var(--border-color);
+            border-radius: 50%; cursor: pointer;
+            transition: all 0.3s ease; border: none; padding: 0;
+        }
+        .nav-dot.active {
+            background: var(--accent-red);
+            transform: scale(1.4);
+        }
+
+        /* ===========================================
+           EDIT MODE (opt-in)
+           =========================================== */
+        .edit-hotzone {
+            position: fixed; top: 0; left: 0;
+            width: 80px; height: 80px;
+            z-index: 10000; cursor: pointer;
+        }
+        .edit-toggle {
+            position: fixed; top: 16px; left: 16px;
+            width: 36px; height: 36px;
+            background: var(--text-primary); color: #fff;
+            border: none; border-radius: 4px;
+            font-size: 16px; cursor: pointer;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 10001;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+        .edit-toggle.active { background: var(--accent-red); }
+        .editing-active [contenteditable="true"] {
+            outline: 2px dashed var(--accent-red-glow);
+            outline-offset: 2px;
+            cursor: text;
+        }
+        .edit-save-notice {
+            position: fixed; bottom: 20px; left: 50%;
+            transform: translateX(-50%);
+            background: var(--text-primary); color: #fff;
+            padding: 8px 20px; border-radius: 4px;
+            font-family: var(--font-body); font-size: 13px;
+            opacity: 0; transition: opacity 0.3s;
+            z-index: 10002; pointer-events: none;
+        }
+        .edit-save-notice.show { opacity: 1; }
+    </style>
+</head>
+<body>
+    <!-- Progress bar -->
+    <div class="progress-bar" id="progressBar"></div>
+    <!-- Nav dots (generated by JS) -->
+    <nav class="nav-dots" id="navDots"></nav>
+    <!-- Edit mode -->
+    <div class="edit-hotzone" id="editHotzone"></div>
+    <button class="edit-toggle" id="editToggle" title="Edit mode (E)">&#9998;</button>
+    <div class="edit-save-notice" id="saveNotice">Tersimpan!</div>
+
+    <!-- ==========================================
+         SLIDE 1 — TITLE
+         ========================================== -->
+    <section class="slide title-slide" data-slide="0">
+        <div class="accent-bar"></div>
+        <div class="bg-number">12</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Pertemuan 12</p>
+            <h1 class="reveal">dbt: Data Pipeline<br><span class="highlight">Modern</span></h1>
+            <p class="title-desc reveal">SQL + software engineering. Testing, docs, version control. Transformasi data yang bisa diandalkan.</p>
+            <div class="tags reveal">
+                <span class="tag active">dbt</span>
+                <span class="tag">SQL</span>
+                <span class="tag">ELT</span>
+                <span class="tag">Pipeline</span>
+                <span class="tag">Gratis</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 2 — SECTION: SETUP
+         ========================================== -->
+    <section class="slide section-divider" data-slide="1">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 1</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Setup &<br>Persiapan</h2>
+            <div class="section-num">01</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 3 — INSTALL DBT + DUCKDB
+         ========================================== -->
+    <section class="slide" data-slide="2">
+        <div class="accent-bar"></div>
+        <div class="bg-number">01</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Setup</p>
+            <h2 class="reveal">Install dbt + DuckDB</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># Install dbt dengan adapter DuckDB</span>
+pip install dbt-duckdb duckdb
+
+<span class="cm"># Verifikasi instalasi</span>
+dbt --version
+
+<span class="cm"># Buat struktur folder project</span>
+mkdir -p models/staging models/intermediate models/marts
+mkdir -p tests macros seeds
+
+<span class="cm"># File konfigurasi utama</span>
+<span class="cm"># dbt_project.yml  → nama project, materialization default</span>
+<span class="cm"># profiles.yml     → koneksi ke DuckDB (path database)</span></code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>dbt-duckdb = combo terbaik!</strong> Gratis, lokal, tanpa server. Cocok untuk belajar dan prototyping.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 4 — GENERATE RAW DATA
+         ========================================== -->
+    <section class="slide" data-slide="3">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Setup</p>
+            <h2 class="reveal">Generate Raw Data</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># Python script: generate_raw_data.py</span>
+<span class="kw">import</span> duckdb
+
+con = duckdb.<span class="fn">connect</span>(<span class="str">'dev.duckdb'</span>)
+
+<span class="cm"># raw_orders: 200K baris</span>
+con.<span class="fn">sql</span>(<span class="str">"""CREATE TABLE raw_orders AS
+SELECT row_number() OVER () AS order_id,
+       (random()*9999+1)::INT AS customer_id,
+       (random()*499+1)::INT AS product_id,
+       (random()*10+1)::INT AS quantity,
+       '2024-01-01'::DATE + (random()*364)::INT AS order_date,
+       CASE WHEN random()&lt;0.7 THEN 'completed'
+            WHEN random()&lt;0.9 THEN 'pending'
+            ELSE 'cancelled' END AS status
+FROM generate_series(1, 200000)"""</span>)
+
+<span class="cm"># raw_products: 500 baris | raw_customers: 10K baris</span></code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>3 tabel sumber:</strong> raw_orders (200K), raw_products (500), raw_customers (10K) — simulasi data warehouse.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 5 — SECTION: TEORI & KONSEP
+         ========================================== -->
+    <section class="slide section-divider" data-slide="4">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 2</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Teori &<br>Konsep</h2>
+            <div class="section-num">02</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 6 — ETL vs ELT
+         ========================================== -->
+    <section class="slide" data-slide="5">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Perbandingan</p>
+            <h2 class="reveal">ETL vs ELT</h2>
+            <div class="comparison reveal">
+                <div class="comparison-col alt">
+                    <h3>ETL (Tradisional)</h3>
+                    <ul>
+                        <li>Transform di server TERPISAH</li>
+                        <li>Infra khusus: Informatica, SSIS, Talend</li>
+                        <li>Bahasa: Java, Scala, custom scripts</li>
+                        <li>Mahal (lisensi + server)</li>
+                        <li>Testing manual, sulit di-maintain</li>
+                        <li>Tidak ada version control</li>
+                    </ul>
+                </div>
+                <div class="comparison-col">
+                    <h3>ELT (Modern)</h3>
+                    <ul>
+                        <li>Transform DI DALAM warehouse</li>
+                        <li>SQL biasa — semua orang bisa</li>
+                        <li>dbt: gratis &amp; open source</li>
+                        <li>Git, testing, docs built-in</li>
+                        <li>40,000+ perusahaan pakai dbt</li>
+                        <li>CI/CD untuk data pipeline</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>ELT menang karena warehouse modern sudah sangat powerful</strong> — kenapa transform di luar?</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 7 — APA ITU DBT
+         ========================================== -->
+    <section class="slide" data-slide="6">
+        <div class="accent-bar"></div>
+        <div class="bg-number">dbt</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Konsep Inti</p>
+            <h2 class="reveal">Apa Itu dbt?</h2>
+            <p class="reveal" style="max-width: 600px; margin-bottom: var(--content-gap);">dbt = <strong>data build tool</strong>. Framework transformasi data berbasis SQL. Setiap model = satu file .sql berisi satu SELECT statement.</p>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>SQL-First</h4>
+                    <p>Tulis SELECT, dbt yang handle CREATE TABLE / INSERT</p>
+                </div>
+                <div class="info-card">
+                    <h4>Version Control</h4>
+                    <p>Semua model di Git — review, rollback, kolaborasi</p>
+                </div>
+                <div class="info-card">
+                    <h4>Testing Built-in</h4>
+                    <p>not_null, unique, accepted_values — otomatis</p>
+                </div>
+                <div class="info-card">
+                    <h4>Documentation</h4>
+                    <p>Auto-generate docs + lineage DAG visual</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 8 — FITUR UTAMA DBT
+         ========================================== -->
+    <section class="slide" data-slide="7">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Fitur</p>
+            <h2 class="reveal">dbt: Fitur Utama</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>Models (.sql)</h4>
+                    <p>Setiap file .sql = satu transformasi. SELECT saja, dbt handle sisanya.</p>
+                </div>
+                <div class="info-card">
+                    <h4>ref() Dependency</h4>
+                    <p>ref('model_name') — dbt otomatis bangun urutan eksekusi (DAG).</p>
+                </div>
+                <div class="info-card">
+                    <h4>Tests</h4>
+                    <p>not_null, unique, accepted_values, relationships — validasi otomatis.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Docs + Lineage</h4>
+                    <p>dbt docs generate → website interaktif dengan DAG visual.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Materializations</h4>
+                    <p>view, table, incremental, ephemeral — pilih sesuai kebutuhan.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Macros (Jinja)</h4>
+                    <p>Template SQL reusable — DRY principle untuk data pipeline.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 9 — ARSITEKTUR BERLAPIS
+         ========================================== -->
+    <section class="slide" data-slide="8">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Arsitektur</p>
+            <h2 class="reveal">Arsitektur Berlapis (Medallion)</h2>
+            <div class="steps reveal">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-title">Sources</div>
+                    <div class="step-desc">Data mentah dari database / API / file. Didefinisikan di sources.yml.</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-title">Staging (stg_)</div>
+                    <div class="step-desc">1:1 dengan source. Cleaning, rename, type casting. Tidak ada JOIN.</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div class="step-title">Intermediate (int_)</div>
+                    <div class="step-desc">JOIN antar staging models. Enrichment, kalkulasi bisnis.</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">4</div>
+                    <div class="step-title">Marts (fct_ / dim_)</div>
+                    <div class="step-desc">Siap konsumsi! Fact tables + dimension tables untuk dashboard.</div>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Aturan emas:</strong> source() hanya di staging, ref() di semua layer setelahnya.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 10 — ref() dan source()
+         ========================================== -->
+    <section class="slide" data-slide="9">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Konsep</p>
+            <h2 class="reveal">ref() dan source() — Dependency Graph</h2>
+            <div class="two-col reveal">
+                <div>
+                    <h3 style="font-size: clamp(0.8rem, 1.2vw, 1rem); margin-bottom: var(--element-gap);">source()</h3>
+                    <div class="code-block">
+                        <code><span class="cm">-- stg_orders.sql</span>
+<span class="kw">SELECT</span> *
+<span class="kw">FROM</span> {{ <span class="fn">source</span>(<span class="str">'raw'</span>, <span class="str">'raw_orders'</span>) }}</code>
+                    </div>
+                    <p style="margin-top: var(--element-gap); font-size: var(--small-size);">Referensi ke tabel sumber (raw data). Didefinisikan di sources.yml.</p>
+                </div>
+                <div>
+                    <h3 style="font-size: clamp(0.8rem, 1.2vw, 1rem); margin-bottom: var(--element-gap);">ref()</h3>
+                    <div class="code-block">
+                        <code><span class="cm">-- int_order_items.sql</span>
+<span class="kw">SELECT</span> *
+<span class="kw">FROM</span> {{ <span class="fn">ref</span>(<span class="str">'stg_orders'</span>) }} o
+<span class="kw">JOIN</span> {{ <span class="fn">ref</span>(<span class="str">'stg_products'</span>) }} p
+  <span class="kw">ON</span> o.product_id = p.product_id</code>
+                    </div>
+                    <p style="margin-top: var(--element-gap); font-size: var(--small-size);">Referensi antar model. dbt bangun DAG otomatis dari ref().</p>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>DAG = Directed Acyclic Graph.</strong> dbt tahu model mana harus dijalankan duluan berdasarkan ref().</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 11 — TESTING FRAMEWORK
+         ========================================== -->
+    <section class="slide" data-slide="10">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Quality</p>
+            <h2 class="reveal">Testing Framework dbt</h2>
+            <div class="comparison reveal">
+                <div class="comparison-col">
+                    <h3>Built-in Tests (schema.yml)</h3>
+                    <ul>
+                        <li><strong>not_null</strong> — kolom tidak boleh NULL</li>
+                        <li><strong>unique</strong> — tidak ada duplikat</li>
+                        <li><strong>accepted_values</strong> — hanya nilai tertentu</li>
+                        <li><strong>relationships</strong> — foreign key valid</li>
+                    </ul>
+                </div>
+                <div class="comparison-col alt">
+                    <h3>Custom SQL Tests</h3>
+                    <ul>
+                        <li>File .sql di folder tests/</li>
+                        <li>Query yang HARUS return 0 rows</li>
+                        <li>Contoh: order_date tidak di masa depan</li>
+                        <li>Contoh: total revenue &gt; 0</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="code-block reveal">
+                <code><span class="cm">-- tests/assert_no_future_orders.sql</span>
+<span class="kw">SELECT</span> order_id, order_date
+<span class="kw">FROM</span> {{ <span class="fn">ref</span>(<span class="str">'stg_orders'</span>) }}
+<span class="kw">WHERE</span> order_date &gt; <span class="fn">current_date</span>()</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 12 — MATERIALIZATION STRATEGIES
+         ========================================== -->
+    <section class="slide" data-slide="11">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Strategi</p>
+            <h2 class="reveal">Materialization Strategies</h2>
+            <table class="data-table reveal">
+                <thead>
+                    <tr><th>Tipe</th><th>Cara Kerja</th><th>Kapan Pakai</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>view</td><td>CREATE VIEW — tidak simpan data</td><td>Model ringan, staging layer</td></tr>
+                    <tr><td>table</td><td>CREATE TABLE — rebuild penuh</td><td>Mart tables, data kecil-sedang</td></tr>
+                    <tr><td>incremental</td><td>INSERT baris baru saja</td><td>Data besar, append-only (log, events)</td></tr>
+                    <tr><td>ephemeral</td><td>CTE saja — tidak ada objek DB</td><td>Helper model, dipakai di ref() saja</td></tr>
+                </tbody>
+            </table>
+            <div class="code-block reveal">
+                <code><span class="cm">-- Contoh konfigurasi di model</span>
+{{ <span class="fn">config</span>(<span class="str">materialized='incremental'</span>, <span class="str">unique_key='order_id'</span>) }}
+
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> {{ <span class="fn">source</span>(<span class="str">'raw'</span>, <span class="str">'raw_orders'</span>) }}
+{% <span class="kw">if</span> <span class="fn">is_incremental</span>() %}
+  <span class="kw">WHERE</span> order_date &gt; (<span class="kw">SELECT</span> <span class="fn">MAX</span>(order_date) <span class="kw">FROM</span> {{ <span class="fn">this</span> }})
+{% endif %}</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 13 — DOCUMENTATION & LINEAGE
+         ========================================== -->
+    <section class="slide" data-slide="12">
+        <div class="accent-bar"></div>
+        <div class="bg-number">&#9671;</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Docs</p>
+            <h2 class="reveal">Documentation &amp; Lineage</h2>
+            <div class="steps reveal">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-title">Generate</div>
+                    <div class="step-desc">dbt docs generate — buat katalog semua model, kolom, tests</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-title">Serve</div>
+                    <div class="step-desc">dbt docs serve — buka browser, lihat website interaktif</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div class="step-title">Visual DAG</div>
+                    <div class="step-desc">Lihat lineage: source → staging → intermediate → marts</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">4</div>
+                    <div class="step-title">Column-level</div>
+                    <div class="step-desc">Deskripsi tiap kolom, tipe data, tests yang aktif</div>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Docs = investasi terbaik.</strong> Tim baru bisa onboard dalam hitungan jam, bukan minggu.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 14 — SECTION: PRAKTIKUM
+         ========================================== -->
+    <section class="slide section-divider" data-slide="13">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 3</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Praktikum</h2>
+            <div class="section-num">03</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 15 — STAGING MODEL
+         ========================================== -->
+    <section class="slide" data-slide="14">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 1</p>
+            <h2 class="reveal">Staging Model: stg_orders.sql</h2>
+            <div class="code-block reveal">
+                <code><span class="cm">-- models/staging/stg_orders.sql</span>
+{{ <span class="fn">config</span>(<span class="str">materialized='view'</span>) }}
+
+<span class="kw">WITH</span> source <span class="kw">AS</span> (
+    <span class="kw">SELECT</span> * <span class="kw">FROM</span> {{ <span class="fn">source</span>(<span class="str">'raw'</span>, <span class="str">'raw_orders'</span>) }}
+),
+
+cleaned <span class="kw">AS</span> (
+    <span class="kw">SELECT</span>
+        order_id,
+        customer_id,
+        product_id,
+        <span class="fn">COALESCE</span>(quantity, <span class="num">1</span>) <span class="kw">AS</span> quantity,
+        order_date,
+        <span class="kw">CASE</span>
+            <span class="kw">WHEN</span> status <span class="kw">IN</span> (<span class="str">'completed'</span>,<span class="str">'pending'</span>,<span class="str">'cancelled'</span>)
+            <span class="kw">THEN</span> status
+            <span class="kw">ELSE</span> <span class="str">'unknown'</span>
+        <span class="kw">END AS</span> order_status
+    <span class="kw">FROM</span> source
+)
+
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> cleaned</code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Staging = 1:1 dengan source.</strong> Hanya cleaning, rename, COALESCE. Tidak ada JOIN.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 16 — INTERMEDIATE MODEL
+         ========================================== -->
+    <section class="slide" data-slide="15">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 2</p>
+            <h2 class="reveal">Intermediate: int_order_items.sql</h2>
+            <div class="code-block reveal">
+                <code><span class="cm">-- models/intermediate/int_order_items.sql</span>
+{{ <span class="fn">config</span>(<span class="str">materialized='view'</span>) }}
+
+<span class="kw">WITH</span> orders <span class="kw">AS</span> (
+    <span class="kw">SELECT</span> * <span class="kw">FROM</span> {{ <span class="fn">ref</span>(<span class="str">'stg_orders'</span>) }}
+),
+
+products <span class="kw">AS</span> (
+    <span class="kw">SELECT</span> * <span class="kw">FROM</span> {{ <span class="fn">ref</span>(<span class="str">'stg_products'</span>) }}
+)
+
+<span class="kw">SELECT</span>
+    o.order_id,
+    o.customer_id,
+    o.order_date,
+    o.order_status,
+    o.quantity,
+    p.product_name,
+    p.category,
+    p.price,
+    o.quantity * p.price <span class="kw">AS</span> line_total
+<span class="kw">FROM</span> orders o
+<span class="kw">JOIN</span> products p <span class="kw">ON</span> o.product_id = p.product_id</code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Intermediate = tempat JOIN.</strong> Gunakan ref() untuk merujuk staging models.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 17 — MART MODELS
+         ========================================== -->
+    <section class="slide" data-slide="16">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 3</p>
+            <h2 class="reveal">Mart Models: fct_sales &amp; dim_customers</h2>
+            <div class="two-col reveal">
+                <div>
+                    <h3 style="font-size: clamp(0.8rem, 1.2vw, 1rem); margin-bottom: var(--element-gap);">fct_sales.sql</h3>
+                    <div class="code-block">
+                        <code><span class="cm">-- models/marts/fct_sales.sql</span>
+{{ <span class="fn">config</span>(<span class="str">materialized='table'</span>) }}
+
+<span class="kw">SELECT</span>
+  order_id,
+  customer_id,
+  order_date,
+  <span class="fn">COUNT</span>(*) <span class="kw">AS</span> items,
+  <span class="fn">SUM</span>(line_total) <span class="kw">AS</span> revenue
+<span class="kw">FROM</span> {{ <span class="fn">ref</span>(<span class="str">'int_order_items'</span>) }}
+<span class="kw">WHERE</span> order_status = <span class="str">'completed'</span>
+<span class="kw">GROUP BY</span> <span class="num">1,2,3</span></code>
+                    </div>
+                </div>
+                <div>
+                    <h3 style="font-size: clamp(0.8rem, 1.2vw, 1rem); margin-bottom: var(--element-gap);">dim_customers.sql</h3>
+                    <div class="code-block">
+                        <code><span class="cm">-- models/marts/dim_customers.sql</span>
+{{ <span class="fn">config</span>(<span class="str">materialized='table'</span>) }}
+
+<span class="kw">SELECT</span>
+  c.customer_id,
+  c.customer_name,
+  c.city,
+  <span class="fn">COUNT</span>(f.order_id) <span class="kw">AS</span> orders,
+  <span class="fn">SUM</span>(f.revenue) <span class="kw">AS</span> lifetime_value
+<span class="kw">FROM</span> {{ <span class="fn">ref</span>(<span class="str">'stg_customers'</span>) }} c
+<span class="kw">LEFT JOIN</span> {{ <span class="fn">ref</span>(<span class="str">'fct_sales'</span>) }} f
+  <span class="kw">ON</span> c.customer_id = f.customer_id
+<span class="kw">GROUP BY</span> <span class="num">1,2,3</span></code>
+                    </div>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Marts = materialized table.</strong> Siap konsumsi untuk dashboard dan reporting.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 18 — TESTING
+         ========================================== -->
+    <section class="slide" data-slide="17">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 4</p>
+            <h2 class="reveal">Testing: schema.yml + dbt test</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># models/staging/schema.yml</span>
+<span class="kw">version</span>: <span class="num">2</span>
+
+<span class="kw">models</span>:
+  - <span class="kw">name</span>: stg_orders
+    <span class="kw">columns</span>:
+      - <span class="kw">name</span>: order_id
+        <span class="kw">tests</span>:
+          - <span class="str">not_null</span>
+          - <span class="str">unique</span>
+      - <span class="kw">name</span>: order_status
+        <span class="kw">tests</span>:
+          - <span class="str">not_null</span>
+          - <span class="fn">accepted_values</span>:
+              <span class="kw">values</span>: [<span class="str">'completed'</span>, <span class="str">'pending'</span>, <span class="str">'cancelled'</span>, <span class="str">'unknown'</span>]
+      - <span class="kw">name</span>: customer_id
+        <span class="kw">tests</span>:
+          - <span class="fn">relationships</span>:
+              <span class="kw">to</span>: ref(<span class="str">'stg_customers'</span>)
+              <span class="kw">field</span>: customer_id</code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>dbt test</strong> — jalankan SEMUA test sekaligus. Gagal = pipeline berhenti, data terjaga.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 19 — FULL PIPELINE RUN
+         ========================================== -->
+    <section class="slide" data-slide="18">
+        <div class="accent-bar"></div>
+        <div class="bg-number">&#9889;</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 5</p>
+            <h2 class="reveal">Full Pipeline Run</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># 1. Jalankan semua model (sesuai DAG order)</span>
+$ dbt run
+<span class="cm"># Running 1 of 7 — stg_orders .............. OK</span>
+<span class="cm"># Running 2 of 7 — stg_products ............. OK</span>
+<span class="cm"># Running 3 of 7 — stg_customers ............ OK</span>
+<span class="cm"># Running 4 of 7 — int_order_items .......... OK</span>
+<span class="cm"># Running 5 of 7 — fct_sales ................ OK</span>
+<span class="cm"># Running 6 of 7 — dim_customers ............ OK</span>
+<span class="cm"># Running 7 of 7 — dim_products ............. OK</span>
+
+<span class="cm"># 2. Jalankan semua tests</span>
+$ dbt test
+<span class="cm"># 12 of 12 tests PASSED</span>
+
+<span class="cm"># 3. Generate dokumentasi</span>
+$ dbt docs generate
+$ dbt docs serve    <span class="cm"># → buka http://localhost:8080</span></code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>3 command = pipeline lengkap!</strong> dbt run → dbt test → dbt docs generate. Selesai.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 20 — SOURCES.YML
+         ========================================== -->
+    <section class="slide" data-slide="19">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Konfigurasi</p>
+            <h2 class="reveal">sources.yml — Definisi Data Sumber</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># models/staging/sources.yml</span>
+<span class="kw">version</span>: <span class="num">2</span>
+
+<span class="kw">sources</span>:
+  - <span class="kw">name</span>: raw
+    <span class="kw">description</span>: <span class="str">"Raw data tables dari operational DB"</span>
+    <span class="kw">tables</span>:
+      - <span class="kw">name</span>: raw_orders
+        <span class="kw">description</span>: <span class="str">"Data order mentah — 200K baris"</span>
+      - <span class="kw">name</span>: raw_products
+        <span class="kw">description</span>: <span class="str">"Katalog produk — 500 items"</span>
+      - <span class="kw">name</span>: raw_customers
+        <span class="kw">description</span>: <span class="str">"Data pelanggan — 10K records"</span></code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>sources.yml = kontrak data.</strong> Definisikan sumber sekali, gunakan source() di semua staging models.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 21 — DBT_PROJECT.YML
+         ========================================== -->
+    <section class="slide" data-slide="20">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Konfigurasi</p>
+            <h2 class="reveal">dbt_project.yml — Konfigurasi Project</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># dbt_project.yml</span>
+<span class="kw">name</span>: <span class="str">'online_retail_pipeline'</span>
+<span class="kw">version</span>: <span class="str">'1.0.0'</span>
+<span class="kw">profile</span>: <span class="str">'online_retail'</span>
+
+<span class="kw">model-paths</span>: [<span class="str">"models"</span>]
+<span class="kw">test-paths</span>: [<span class="str">"tests"</span>]
+<span class="kw">macro-paths</span>: [<span class="str">"macros"</span>]
+
+<span class="kw">models</span>:
+  online_retail_pipeline:
+    <span class="kw">staging</span>:
+      +<span class="kw">materialized</span>: view      <span class="cm"># staging = view (ringan)</span>
+    <span class="kw">intermediate</span>:
+      +<span class="kw">materialized</span>: view      <span class="cm"># intermediate = view</span>
+    <span class="kw">marts</span>:
+      +<span class="kw">materialized</span>: table     <span class="cm"># marts = table (cepat query)</span></code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Materialization per folder!</strong> Staging/intermediate = view (hemat storage), marts = table (cepat query).</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 22 — PROFILES.YML
+         ========================================== -->
+    <section class="slide" data-slide="21">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Konfigurasi</p>
+            <h2 class="reveal">profiles.yml — Koneksi Database</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># ~/.dbt/profiles.yml</span>
+<span class="kw">online_retail</span>:
+  <span class="kw">target</span>: dev
+  <span class="kw">outputs</span>:
+    <span class="kw">dev</span>:
+      <span class="kw">type</span>: duckdb
+      <span class="kw">path</span>: <span class="str">'dev.duckdb'</span>       <span class="cm"># file database lokal</span>
+      <span class="kw">threads</span>: <span class="num">4</span>               <span class="cm"># parallel execution</span>
+
+    <span class="kw">prod</span>:
+      <span class="kw">type</span>: duckdb
+      <span class="kw">path</span>: <span class="str">'prod.duckdb'</span>      <span class="cm"># production database</span>
+      <span class="kw">threads</span>: <span class="num">8</span></code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>DuckDB = zero server.</strong> Cukup file .duckdb. Tidak perlu install PostgreSQL, MySQL, atau Snowflake.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 23 — DAG VISUALIZATION
+         ========================================== -->
+    <section class="slide" data-slide="22">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Visualisasi</p>
+            <h2 class="reveal">DAG: Dependency Graph Pipeline</h2>
+            <div class="code-block reveal" style="background: #f8f8f8; border: 1px solid var(--border-color);">
+                <code style="color: var(--text-primary);">
+  <span style="color: var(--text-muted);">SOURCES</span>              <span style="color: var(--text-muted);">STAGING</span>            <span style="color: var(--text-muted);">INTERMEDIATE</span>         <span style="color: var(--text-muted);">MARTS</span>
+
+  raw_orders    ──→   stg_orders     ──┐
+                                       ├──→  int_order_items  ──┬──→  fct_sales
+  raw_products  ──→   stg_products   ──┘                       │
+                                                                ├──→  dim_products
+  raw_customers ──→   stg_customers  ───────────────────────────┴──→  dim_customers
+</code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>dbt docs serve</strong> menampilkan DAG interaktif — klik model untuk lihat SQL, tests, dan deskripsi.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 24 — SECTION: TIPS & KESALAHAN UMUM
+         ========================================== -->
+    <section class="slide section-divider" data-slide="23">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 4</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Tips &<br>Kesalahan Umum</h2>
+            <div class="section-num">04</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 25 — KESALAHAN UMUM
+         ========================================== -->
+    <section class="slide" data-slide="24">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Hindari</p>
+            <h2 class="reveal">Kesalahan Umum dbt</h2>
+            <ul class="content-list reveal">
+                <li><strong>Hardcode table name</strong> — selalu pakai ref() dan source(). <em>Fix: ganti FROM table → FROM {{ ref('model') }}</em></li>
+                <li><strong>Semua di satu model</strong> — query 500 baris SQL. <em>Fix: pecah ke staging → intermediate → mart</em></li>
+                <li><strong>Tidak ada test</strong> — data rusak, tidak ada yang tahu. <em>Fix: minimal not_null + unique di primary key</em></li>
+                <li><strong>Incremental tanpa unique_key</strong> — duplikasi data. <em>Fix: selalu set unique_key di config</em></li>
+                <li><strong>Skip documentation</strong> — tim baru bingung. <em>Fix: tulis description di schema.yml</em></li>
+                <li><strong>Tidak pakai CTE</strong> — SQL sulit dibaca. <em>Fix: pakai WITH ... AS untuk setiap langkah</em></li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 26 — BEST PRACTICES
+         ========================================== -->
+    <section class="slide" data-slide="25">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Tips</p>
+            <h2 class="reveal">dbt Best Practices</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>Naming Convention</h4>
+                    <p>stg_ (staging), int_ (intermediate), fct_ (fact), dim_ (dimension). Konsisten!</p>
+                </div>
+                <div class="info-card">
+                    <h4>One Model, One Job</h4>
+                    <p>Setiap model punya satu tanggung jawab. Jangan campur cleaning + business logic.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Test Everything</h4>
+                    <p>Primary key: not_null + unique. Foreign key: relationships. Status: accepted_values.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Git Workflow</h4>
+                    <p>Branch per feature, PR review, CI/CD jalankan dbt test otomatis.</p>
+                </div>
+                <div class="info-card">
+                    <h4>DRY with Macros</h4>
+                    <p>Logika berulang? Buat macro Jinja. Reuse di banyak model.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Limit Scope</h4>
+                    <p>dbt run --select stg_orders+ → jalankan model tertentu + downstream.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 27 — DISKUSI
+         ========================================== -->
+    <section class="slide" data-slide="26">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Refleksi</p>
+            <h2 class="reveal">Diskusi &amp; Pertanyaan</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>Q1</h4>
+                    <p>Kenapa dbt pakai SQL, bukan Python? (aksesibilitas, deklaratif, warehouse-native)</p>
+                </div>
+                <div class="info-card">
+                    <h4>Q2</h4>
+                    <p>Apa bedanya dbt run dan dbt test? (run = bangun model, test = validasi data)</p>
+                </div>
+                <div class="info-card">
+                    <h4>Q3</h4>
+                    <p>Kapan pakai incremental vs table? (data besar + append-only = incremental)</p>
+                </div>
+                <div class="info-card">
+                    <h4>Q4</h4>
+                    <p>Bagaimana dbt menentukan urutan eksekusi? (DAG dari ref() — topological sort)</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 28 — RINGKASAN
+         ========================================== -->
+    <section class="slide" data-slide="27">
+        <div class="accent-bar"></div>
+        <div class="bg-number">&#10003;</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Ringkasan</p>
+            <h2 class="reveal">Apa yang Sudah Kita Pelajari</h2>
+            <ul class="content-list reveal">
+                <li><strong>dbt</strong> = framework transformasi data berbasis SQL — gratis, open source, 40K+ perusahaan</li>
+                <li><strong>ELT &gt; ETL</strong> — transform di dalam warehouse, SQL biasa, version control</li>
+                <li><strong>Arsitektur berlapis</strong> — sources → staging → intermediate → marts</li>
+                <li><strong>ref() &amp; source()</strong> — dependency graph otomatis (DAG)</li>
+                <li><strong>Testing built-in</strong> — not_null, unique, accepted_values, relationships</li>
+                <li><strong>Materialization</strong> — view, table, incremental, ephemeral — pilih sesuai kebutuhan</li>
+                <li><strong>Documentation</strong> — dbt docs generate → katalog + lineage DAG interaktif</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 29 — SECTION: STUDI KASUS & TUGAS
+         ========================================== -->
+    <section class="slide section-divider" data-slide="28">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 5</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Studi Kasus<br>&amp; Tugas</h2>
+            <div class="section-num">05</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 30 — TUGAS: ONLINE RETAIL PIPELINE
+         ========================================== -->
+    <section class="slide" data-slide="29">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Tugas</p>
+            <h2 class="reveal">Online Retail Pipeline (1M Rows)</h2>
+            <div class="two-col reveal">
+                <div>
+                    <h3 style="font-size: clamp(0.8rem, 1.2vw, 1rem); margin-bottom: var(--element-gap);">Requirements</h3>
+                    <ul class="content-list">
+                        <li>Generate data: 1M orders, 1K products, 50K customers</li>
+                        <li>Minimum <strong>7 dbt models</strong> (3 stg + 1 int + 3 marts)</li>
+                        <li>Semua model pakai ref() dan source()</li>
+                        <li>Minimal 10 tests di schema.yml</li>
+                        <li>1 custom SQL test di folder tests/</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 style="font-size: clamp(0.8rem, 1.2vw, 1rem); margin-bottom: var(--element-gap);">Deliverables</h3>
+                    <ul class="content-list">
+                        <li>Screenshot: <strong>dbt run</strong> (semua OK)</li>
+                        <li>Screenshot: <strong>dbt test</strong> (semua PASSED)</li>
+                        <li>Screenshot: <strong>DAG lineage</strong> dari dbt docs</li>
+                        <li>Query results dari fct_sales &amp; dim_customers</li>
+                        <li>Zip semua file project dbt</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Kumpulkan:</strong> zip file project dbt + screenshot di Google Classroom.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 31 — REFERENSI
+         ========================================== -->
+    <section class="slide" data-slide="30">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Referensi</p>
+            <h2 class="reveal">Bahan Belajar Mandiri</h2>
+            <ul class="content-list reveal">
+                <li><strong>dbt Docs:</strong> docs.getdbt.com — dokumentasi resmi lengkap</li>
+                <li><strong>dbt Learn:</strong> courses.getdbt.com — kursus gratis dari dbt Labs</li>
+                <li><strong>dbt Best Practices:</strong> docs.getdbt.com/best-practices</li>
+                <li><strong>dbt-duckdb Adapter:</strong> github.com/duckdb/dbt-duckdb</li>
+                <li><strong>Buku:</strong> Joe Reis &amp; Matt Housley — Fundamentals of Data Engineering (O'Reilly)</li>
+                <li><strong>Zoomcamp:</strong> github.com/DataTalksClub/data-engineering-zoomcamp</li>
+                <li><strong>dbt Discourse:</strong> discourse.getdbt.com — komunitas &amp; Q&amp;A</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ===========================================
+         JAVASCRIPT: Presentation Controller
+         =========================================== -->
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.isScrolling = false;
+                this.setupIntersectionObserver();
+                this.setupKeyboardNav();
+                this.setupTouchNav();
+                this.setupWheelNav();
+                this.setupProgressBar();
+                this.setupNavDots();
+            }
+
+            setupIntersectionObserver() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            const idx = Array.from(this.slides).indexOf(entry.target);
+                            if (idx !== -1) {
+                                this.currentSlide = idx;
+                                this.updateProgressBar();
+                                this.updateNavDots();
+                            }
+                        }
+                    });
+                }, { threshold: 0.5 });
+                this.slides.forEach(slide => observer.observe(slide));
+            }
+
+            goToSlide(index) {
+                if (index >= 0 && index < this.slides.length) {
+                    this.slides[index].scrollIntoView({ behavior: 'smooth' });
+                    this.currentSlide = index;
+                    this.updateProgressBar();
+                    this.updateNavDots();
+                }
+            }
+
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.target.getAttribute && e.target.getAttribute('contenteditable') === 'true') return;
+                    switch(e.key) {
+                        case 'ArrowDown': case 'ArrowRight': case ' ': case 'PageDown':
+                            e.preventDefault(); this.goToSlide(this.currentSlide + 1); break;
+                        case 'ArrowUp': case 'ArrowLeft': case 'PageUp':
+                            e.preventDefault(); this.goToSlide(this.currentSlide - 1); break;
+                        case 'Home': e.preventDefault(); this.goToSlide(0); break;
+                        case 'End': e.preventDefault(); this.goToSlide(this.slides.length - 1); break;
+                    }
+                });
+            }
+
+            setupTouchNav() {
+                let startY = 0;
+                document.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; }, { passive: true });
+                document.addEventListener('touchend', (e) => {
+                    const diff = startY - e.changedTouches[0].clientY;
+                    if (Math.abs(diff) > 50) {
+                        diff > 0 ? this.goToSlide(this.currentSlide + 1) : this.goToSlide(this.currentSlide - 1);
+                    }
+                }, { passive: true });
+            }
+
+            setupWheelNav() {
+                let timeout;
+                document.addEventListener('wheel', (e) => {
+                    if (this.isScrolling) return;
+                    this.isScrolling = true;
+                    clearTimeout(timeout);
+                    if (e.deltaY > 30) this.goToSlide(this.currentSlide + 1);
+                    else if (e.deltaY < -30) this.goToSlide(this.currentSlide - 1);
+                    timeout = setTimeout(() => { this.isScrolling = false; }, 800);
+                }, { passive: true });
+            }
+
+            setupProgressBar() {
+                this.progressBar = document.getElementById('progressBar');
+                this.updateProgressBar();
+            }
+
+            updateProgressBar() {
+                const pct = ((this.currentSlide + 1) / this.slides.length) * 100;
+                if (this.progressBar) this.progressBar.style.width = pct + '%';
+            }
+
+            setupNavDots() {
+                const container = document.getElementById('navDots');
+                if (!container) return;
+                this.slides.forEach((_, i) => {
+                    const dot = document.createElement('button');
+                    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+                    dot.addEventListener('click', () => this.goToSlide(i));
+                    dot.setAttribute('aria-label', `Slide ${i + 1}`);
+                    container.appendChild(dot);
+                });
+                this.dots = container.querySelectorAll('.nav-dot');
+            }
+
+            updateNavDots() {
+                if (!this.dots) return;
+                this.dots.forEach((dot, i) => {
+                    dot.classList.toggle('active', i === this.currentSlide);
+                });
+            }
+        }
+
+        /* ===========================================
+           INLINE EDITOR
+           =========================================== */
+        class InlineEditor {
+            constructor() {
+                this.isActive = false;
+                this.storageKey = 'slides-p12-edits';
+                this.loadEdits();
+            }
+
+            toggleEditMode() {
+                this.isActive = !this.isActive;
+                document.body.classList.toggle('editing-active', this.isActive);
+                document.getElementById('editToggle').classList.toggle('active', this.isActive);
+                const editables = document.querySelectorAll('h1,h2,h3,h4,p,li,span,.step-desc,.step-title,.tag');
+                editables.forEach(el => {
+                    if (el.closest('.nav-dots') || el.closest('.edit-toggle')) return;
+                    el.contentEditable = this.isActive ? 'true' : 'false';
+                });
+                if (this.isActive) {
+                    document.addEventListener('input', this._saveHandler = () => this.saveEdits());
+                } else {
+                    document.removeEventListener('input', this._saveHandler);
+                    this.saveEdits();
+                }
+            }
+
+            saveEdits() {
+                const data = {};
+                document.querySelectorAll('.slide').forEach((slide, i) => {
+                    data[i] = slide.innerHTML;
+                });
+                try { localStorage.setItem(this.storageKey, JSON.stringify(data)); } catch(e) {}
+                const notice = document.getElementById('saveNotice');
+                notice.classList.add('show');
+                setTimeout(() => notice.classList.remove('show'), 1200);
+            }
+
+            loadEdits() {
+                try {
+                    const data = JSON.parse(localStorage.getItem(this.storageKey));
+                    if (!data) return;
+                    document.querySelectorAll('.slide').forEach((slide, i) => {
+                        if (data[i]) slide.innerHTML = data[i];
+                    });
+                } catch(e) {}
+            }
+        }
+
+        /* Init */
+        const presentation = new SlidePresentation();
+        const editor = new InlineEditor();
+
+        /* Edit hotzone + toggle */
+        const hotzone = document.getElementById('editHotzone');
+        const editToggle = document.getElementById('editToggle');
+        let hideTimeout = null;
+        hotzone.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); editToggle.classList.add('show'); });
+        hotzone.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+        editToggle.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); });
+        editToggle.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+        editToggle.addEventListener('click', () => editor.toggleEditMode());
+        hotzone.addEventListener('click', () => editor.toggleEditMode());
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) editor.toggleEditMode();
+        });
+    </script>
+</body>
+</html>

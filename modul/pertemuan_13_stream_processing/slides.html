@@ -1,0 +1,1502 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pertemuan 13 — Stream Processing & Real-time Analytics</title>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;800&family=Nunito:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES — SWISS MODERN THEME
+           =========================================== */
+        :root {
+            --bg-white: #ffffff;
+            --bg-light: #f8f8f8;
+            --text-primary: #0a0a0a;
+            --text-secondary: #555;
+            --text-muted: #888;
+            --accent-red: #ff3300;
+            --accent-red-light: rgba(255, 51, 0, 0.08);
+            --accent-red-glow: rgba(255, 51, 0, 0.15);
+            --grid-color: rgba(0,0,0,0.05);
+            --border-color: rgba(0,0,0,0.1);
+            --font-display: 'Archivo', sans-serif;
+            --font-body: 'Nunito', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration-normal: 0.6s;
+
+            --title-size: clamp(2.2rem, 6vw, 5rem);
+            --h2-size: clamp(1.8rem, 4.5vw, 3.2rem);
+            --h3-size: clamp(1.3rem, 3vw, 2.2rem);
+            --body-size: clamp(1rem, 2vw, 1.5rem);
+            --small-size: clamp(0.85rem, 1.4vw, 1.15rem);
+            --slide-padding: clamp(1rem, 3vw, 2.5rem);
+            --content-gap: clamp(0.5rem, 1.5vw, 1.5rem);
+            --element-gap: clamp(0.25rem, 0.8vw, 0.75rem);
+        }
+
+        /* ===========================================
+           BASE RESET
+           =========================================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ===========================================
+           VIEWPORT FITTING — MANDATORY BASE STYLES
+           =========================================== */
+        html, body { height: 100%; overflow-x: hidden; }
+        html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+
+        .slide {
+            width: 100vw; height: 100vh; height: 100dvh;
+            overflow: hidden; scroll-snap-align: start;
+            display: flex; flex-direction: column; position: relative;
+        }
+        .slide-content {
+            flex: 1; display: flex; flex-direction: column; justify-content: center;
+            max-height: 100%; overflow: hidden;
+            padding: clamp(1.5rem, 3vh, 3rem) var(--slide-padding);
+            padding-left: clamp(2.5rem, 5vw, 5rem);
+            padding-right: clamp(2rem, 4vw, 4rem);
+        }
+        .card, .container, .content-box {
+            max-width: min(95vw, 1200px); max-height: min(90vh, 800px);
+        }
+        .feature-list, .bullet-list { gap: clamp(0.4rem, 1vh, 1rem); }
+        .feature-list li, .bullet-list li { font-size: var(--body-size); line-height: 1.4; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+            gap: clamp(0.5rem, 1.5vw, 1rem);
+        }
+        img, .image-container { max-width: 100%; max-height: min(50vh, 400px); object-fit: contain; }
+
+        @media (max-height: 700px) {
+            :root {
+                --slide-padding: clamp(0.75rem, 2vw, 1.5rem);
+                --content-gap: clamp(0.4rem, 1vw, 0.8rem);
+                --title-size: clamp(1.6rem, 5vw, 3rem);
+                --h2-size: clamp(1.3rem, 3.5vw, 2.2rem);
+                --body-size: clamp(0.85rem, 1.6vw, 1.2rem);
+            }
+        }
+        @media (max-height: 600px) {
+            :root {
+                --slide-padding: clamp(0.5rem, 1.5vw, 1rem);
+                --content-gap: clamp(0.3rem, 0.8vw, 0.6rem);
+                --title-size: clamp(1.4rem, 4.5vw, 2.5rem);
+                --body-size: clamp(0.8rem, 1.4vw, 1.1rem);
+            }
+            .nav-dots, .keyboard-hint, .decorative { display: none; }
+        }
+        @media (max-height: 500px) {
+            :root {
+                --slide-padding: clamp(0.4rem, 1.5vw, 0.8rem);
+                --title-size: clamp(1.2rem, 4vw, 2rem);
+                --h2-size: clamp(1rem, 3vw, 1.5rem);
+                --body-size: clamp(0.75rem, 1.2vw, 1rem);
+            }
+        }
+        @media (max-width: 600px) {
+            :root { --title-size: clamp(1.5rem, 8vw, 3rem); }
+            .grid { grid-template-columns: 1fr; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.2s !important;
+            }
+            html { scroll-behavior: auto; }
+        }
+
+        /* ===========================================
+           SWISS MODERN — GRID BACKGROUND
+           =========================================== */
+        .slide::before {
+            content: '';
+            position: absolute; inset: 0;
+            background-image:
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: clamp(30px, 5vw, 60px) clamp(30px, 5vw, 60px);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .slide > * { position: relative; z-index: 1; }
+
+        /* ===========================================
+           ACCENT BAR (left edge)
+           =========================================== */
+        .accent-bar {
+            position: absolute; left: 0; top: 0; bottom: 0;
+            width: clamp(4px, 0.5vw, 6px);
+            background: var(--accent-red);
+            z-index: 2;
+        }
+
+        /* ===========================================
+           TYPOGRAPHY
+           =========================================== */
+        body { font-family: var(--font-body); color: var(--text-primary); background: var(--bg-white); }
+
+        h1, h2, h3 { font-family: var(--font-display); font-weight: 800; line-height: 1.1; }
+        h1 { font-size: var(--title-size); }
+        h2 { font-size: var(--h2-size); margin-bottom: var(--content-gap); }
+        h3 { font-size: var(--h3-size); }
+        p, li { font-size: var(--body-size); line-height: 1.6; color: var(--text-secondary); }
+        .highlight { color: var(--accent-red); }
+        .tag-label {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(0.8rem, 1.3vw, 1.1rem);
+            color: var(--accent-red); text-transform: uppercase; letter-spacing: 0.2em;
+            margin-bottom: var(--element-gap);
+        }
+
+        /* ===========================================
+           LARGE BACKGROUND NUMBER
+           =========================================== */
+        .bg-number {
+            position: absolute;
+            right: clamp(1rem, 4vw, 4rem);
+            top: clamp(0.5rem, 2vh, 2rem);
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(5rem, 15vw, 12rem);
+            color: rgba(0,0,0,0.03);
+            line-height: 1; z-index: 0; pointer-events: none;
+        }
+
+        /* ===========================================
+           SECTION DIVIDER SLIDES
+           =========================================== */
+        .slide.section-divider {
+            background: var(--text-primary);
+        }
+        .slide.section-divider::before {
+            background-image:
+                linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+        }
+        .slide.section-divider .accent-bar { background: var(--accent-red); }
+        .slide.section-divider h2 { color: #fff; }
+        .slide.section-divider .section-num {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(4rem, 12vw, 10rem);
+            color: rgba(255,255,255,0.06);
+            position: absolute;
+            right: clamp(2rem, 6vw, 6rem);
+            bottom: clamp(1rem, 4vh, 4rem);
+        }
+        .slide.section-divider .tag-label { color: var(--accent-red); }
+
+        /* ===========================================
+           TITLE SLIDE
+           =========================================== */
+        .slide.title-slide { background: var(--bg-white); }
+        .title-meta {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+            color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em;
+            margin-bottom: clamp(0.5rem, 1vh, 1rem);
+        }
+        .title-slide h1 {
+            font-size: clamp(2.5rem, 6.5vw, 5.5rem);
+            margin-bottom: clamp(0.5rem, 1.5vh, 1.5rem);
+        }
+        .title-desc {
+            font-size: clamp(1.1rem, 2vw, 1.5rem);
+            color: var(--text-secondary);
+            max-width: 700px; line-height: 1.6;
+            margin-bottom: clamp(0.75rem, 2vh, 1.5rem);
+        }
+        .tags {
+            display: flex; gap: clamp(8px, 1vw, 14px); flex-wrap: wrap;
+        }
+        .tag {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.7rem, 1.1vw, 0.95rem);
+            text-transform: uppercase; letter-spacing: 0.08em;
+            padding: clamp(4px, 0.6vh, 8px) clamp(10px, 1.2vw, 18px);
+            border: 2px solid var(--text-primary);
+            color: var(--text-primary);
+        }
+        .tag.active { background: var(--text-primary); color: var(--bg-white); }
+
+        /* ===========================================
+           CONTENT COMPONENTS
+           =========================================== */
+        /* Comparison columns */
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: clamp(1rem, 3vw, 3rem);
+            margin-top: var(--content-gap);
+        }
+        @media (max-width: 600px) { .comparison { grid-template-columns: 1fr; } }
+        .comparison-col h3 {
+            font-size: clamp(1.1rem, 1.8vw, 1.5rem);
+            margin-bottom: var(--element-gap);
+            padding-bottom: var(--element-gap);
+            border-bottom: 3px solid var(--accent-red);
+        }
+        .comparison-col.alt h3 { border-bottom-color: var(--text-primary); }
+        .comparison-col ul { list-style: none; }
+        .comparison-col li {
+            font-size: clamp(0.9rem, 1.4vw, 1.2rem);
+            padding: clamp(3px, 0.4vh, 6px) 0;
+            padding-left: 1.2em;
+            position: relative;
+        }
+        .comparison-col li::before {
+            content: '→';
+            position: absolute; left: 0;
+            color: var(--accent-red);
+            font-weight: 700;
+        }
+
+        /* Steps */
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+            gap: clamp(0.5rem, 1.5vw, 1.5rem);
+            margin-top: var(--content-gap);
+        }
+        .step {
+            border-left: 3px solid var(--accent-red);
+            padding-left: clamp(0.5rem, 1vw, 1rem);
+        }
+        .step-num {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(1.5rem, 2.5vw, 2.2rem);
+            color: var(--accent-red); line-height: 1;
+        }
+        .step-title {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.9rem, 1.4vw, 1.2rem);
+            color: var(--text-primary);
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin: clamp(2px, 0.3vh, 4px) 0;
+        }
+        .step-desc {
+            font-size: clamp(0.85rem, 1.3vw, 1.1rem);
+            color: var(--text-secondary);
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: #1a1a1a;
+            border-radius: 4px;
+            padding: clamp(0.5rem, 1.5vw, 1.5rem);
+            margin-top: var(--element-gap);
+            overflow-x: auto;
+            max-height: min(45vh, 350px);
+        }
+        .code-block code {
+            font-family: var(--font-mono);
+            font-size: clamp(0.85rem, 1.4vw, 1.15rem);
+            color: #e0e0e0; line-height: 1.5;
+            white-space: pre;
+        }
+        .code-block .kw { color: #ff7b72; }
+        .code-block .fn { color: #d2a8ff; }
+        .code-block .str { color: #a5d6ff; }
+        .code-block .cm { color: #8b949e; }
+        .code-block .num { color: #79c0ff; }
+
+        /* Info cards */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+            gap: clamp(0.5rem, 1vw, 1rem);
+            margin-top: var(--content-gap);
+        }
+        .info-card {
+            padding: clamp(0.5rem, 1.5vw, 1.5rem);
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+        .info-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0;
+            height: 3px; background: var(--accent-red);
+        }
+        .info-card h4 {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(0.95rem, 1.5vw, 1.25rem);
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin-bottom: clamp(2px, 0.5vh, 6px);
+        }
+        .info-card p { font-size: clamp(0.9rem, 1.3vw, 1.15rem); }
+
+        /* Benchmark bars */
+        .bench-row {
+            display: flex; align-items: center;
+            gap: clamp(0.5rem, 1vw, 1rem);
+            margin-bottom: clamp(0.3rem, 0.5vh, 0.5rem);
+        }
+        .bench-label {
+            font-family: var(--font-display); font-weight: 700;
+            font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+            min-width: clamp(70px, 10vw, 120px);
+            text-align: right;
+        }
+        .bench-bar {
+            height: clamp(28px, 4vh, 40px);
+            background: var(--accent-red);
+            border-radius: 2px;
+            display: flex; align-items: center;
+            padding-left: clamp(6px, 0.8vw, 12px);
+            transition: width 1s var(--ease-out-expo);
+        }
+        .bench-bar.alt { background: var(--text-primary); }
+        .bench-bar span {
+            font-family: var(--font-mono);
+            font-size: clamp(0.75rem, 1.1vw, 1rem);
+            color: #fff; white-space: nowrap;
+            font-weight: 500;
+        }
+        .bench-speedup {
+            font-family: var(--font-display); font-weight: 800;
+            font-size: clamp(1rem, 1.5vw, 1.3rem);
+            color: var(--accent-red);
+        }
+
+        /* Bullet list */
+        .content-list {
+            list-style: none;
+            margin-top: var(--element-gap);
+        }
+        .content-list li {
+            padding: clamp(3px, 0.5vh, 6px) 0;
+            padding-left: 1.5em; position: relative;
+            font-size: var(--body-size);
+        }
+        .content-list li::before {
+            content: ''; position: absolute;
+            left: 0; top: clamp(10px, 1.2vh, 14px);
+            width: 8px; height: 3px;
+            background: var(--accent-red);
+        }
+
+        /* Tip/warning box */
+        .tip-box {
+            border-left: 4px solid var(--accent-red);
+            background: var(--accent-red-light);
+            padding: clamp(0.5rem, 1vw, 1rem);
+            margin-top: var(--element-gap);
+        }
+        .tip-box p { font-size: clamp(0.9rem, 1.4vw, 1.2rem); color: var(--text-primary); }
+        .tip-box strong { color: var(--accent-red); }
+
+        /* Table */
+        .data-table {
+            width: 100%; border-collapse: collapse;
+            margin-top: var(--element-gap);
+            font-size: clamp(0.9rem, 1.3vw, 1.15rem);
+        }
+        .data-table th {
+            font-family: var(--font-display); font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            font-size: clamp(0.8rem, 1.2vw, 1.05rem);
+            text-align: left;
+            padding: clamp(6px, 0.8vh, 12px) clamp(8px, 1.2vw, 16px);
+            border-bottom: 2px solid var(--text-primary);
+            color: var(--text-primary);
+        }
+        .data-table td {
+            padding: clamp(5px, 0.7vh, 10px) clamp(8px, 1.2vw, 16px);
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+        .data-table td:first-child { font-weight: 600; color: var(--text-primary); }
+
+        /* Two column layout */
+        .two-col {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: clamp(1rem, 3vw, 3rem);
+            margin-top: var(--content-gap);
+        }
+        @media (max-width: 600px) { .two-col { grid-template-columns: 1fr; } }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal {
+            opacity: 0; transform: translateY(20px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .reveal-left {
+            opacity: 0; transform: translateX(-30px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+        .slide.visible .reveal,
+        .slide.visible .reveal-left {
+            opacity: 1; transform: translate(0);
+        }
+        .slide.visible .reveal:nth-child(1) { transition-delay: 0.05s; }
+        .slide.visible .reveal:nth-child(2) { transition-delay: 0.1s; }
+        .slide.visible .reveal:nth-child(3) { transition-delay: 0.15s; }
+        .slide.visible .reveal:nth-child(4) { transition-delay: 0.2s; }
+        .slide.visible .reveal:nth-child(5) { transition-delay: 0.25s; }
+        .slide.visible .reveal:nth-child(6) { transition-delay: 0.3s; }
+
+        /* ===========================================
+           PROGRESS BAR
+           =========================================== */
+        .progress-bar {
+            position: fixed; top: 0; left: 0;
+            height: 3px; background: var(--accent-red);
+            z-index: 9999; transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        /* ===========================================
+           NAV DOTS
+           =========================================== */
+        .nav-dots {
+            position: fixed; right: clamp(8px, 1vw, 16px);
+            top: 50%; transform: translateY(-50%);
+            display: flex; flex-direction: column;
+            gap: clamp(4px, 0.5vh, 8px); z-index: 9998;
+        }
+        .nav-dot {
+            width: clamp(6px, 0.5vw, 8px); height: clamp(6px, 0.5vw, 8px);
+            background: var(--border-color);
+            border-radius: 50%; cursor: pointer;
+            transition: all 0.3s ease; border: none; padding: 0;
+        }
+        .nav-dot.active {
+            background: var(--accent-red);
+            transform: scale(1.4);
+        }
+
+        /* ===========================================
+           EDIT MODE (opt-in)
+           =========================================== */
+        .edit-hotzone {
+            position: fixed; top: 0; left: 0;
+            width: 80px; height: 80px;
+            z-index: 10000; cursor: pointer;
+        }
+        .edit-toggle {
+            position: fixed; top: 16px; left: 16px;
+            width: 36px; height: 36px;
+            background: var(--text-primary); color: #fff;
+            border: none; border-radius: 4px;
+            font-size: 16px; cursor: pointer;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 10001;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+        .edit-toggle.active { background: var(--accent-red); }
+        .editing-active [contenteditable="true"] {
+            outline: 2px dashed var(--accent-red-glow);
+            outline-offset: 2px;
+            cursor: text;
+        }
+        .edit-save-notice {
+            position: fixed; bottom: 20px; left: 50%;
+            transform: translateX(-50%);
+            background: var(--text-primary); color: #fff;
+            padding: 8px 20px; border-radius: 4px;
+            font-family: var(--font-body); font-size: 13px;
+            opacity: 0; transition: opacity 0.3s;
+            z-index: 10002; pointer-events: none;
+        }
+        .edit-save-notice.show { opacity: 1; }
+    </style>
+</head>
+<body>
+    <!-- Progress bar -->
+    <div class="progress-bar" id="progressBar"></div>
+    <!-- Nav dots (generated by JS) -->
+    <nav class="nav-dots" id="navDots"></nav>
+    <!-- Edit mode -->
+    <div class="edit-hotzone" id="editHotzone"></div>
+    <button class="edit-toggle" id="editToggle" title="Edit mode (E)">&#9998;</button>
+    <div class="edit-save-notice" id="saveNotice">Tersimpan!</div>
+
+    <!-- ==========================================
+         SLIDE 1 — TITLE
+         ========================================== -->
+    <section class="slide title-slide" data-slide="0">
+        <div class="accent-bar"></div>
+        <div class="bg-number">13</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Pertemuan 13</p>
+            <h1 class="reveal">Stream Processing &<br><span class="highlight">Real-time Analytics</span></h1>
+            <p class="title-desc reveal">Batch vs Stream, Kafka, Windowing. Surge pricing real-time.</p>
+            <div class="tags reveal">
+                <span class="tag active">Streaming</span>
+                <span class="tag">Kafka</span>
+                <span class="tag">Real-time</span>
+                <span class="tag">Windowing</span>
+                <span class="tag">Gratis</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 2 — SECTION: SETUP
+         ========================================== -->
+    <section class="slide section-divider" data-slide="1">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 1</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Setup &<br>Persiapan</h2>
+            <div class="section-num">01</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 3 — SETUP
+         ========================================== -->
+    <section class="slide" data-slide="2">
+        <div class="accent-bar"></div>
+        <div class="bg-number">01</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Setup</p>
+            <h2 class="reveal">Setup Environment</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># Cell 1: Install</span>
+!pip install duckdb polars -q
+
+<span class="cm"># Cell 2: Import</span>
+<span class="kw">import</span> random, json, time
+<span class="kw">from</span> collections <span class="kw">import</span> defaultdict
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime, timedelta
+
+<span class="cm"># Cell 3: Test</span>
+<span class="fn">print</span>(<span class="str">"Stream Processing Ready!"</span>)</code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Simulasi konsep dengan Python murni tanpa Kafka.</strong> Konsep 100% sama dengan produksi. Kafka asli? Gratis di developer.confluent.io/courses</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 4 — SECTION: TEORI & KONSEP
+         ========================================== -->
+    <section class="slide section-divider" data-slide="3">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 2</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Teori &<br>Konsep</h2>
+            <div class="section-num">02</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 5 — BATCH VS STREAM
+         ========================================== -->
+    <section class="slide" data-slide="4">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Konsep Inti</p>
+            <h2 class="reveal">Batch vs Stream Processing</h2>
+            <div class="comparison reveal">
+                <div class="comparison-col alt">
+                    <h3>Batch (P9-12)</h3>
+                    <ul>
+                        <li>Dikumpulkan, proses SEKALIGUS</li>
+                        <li>Latensi: menit - jam</li>
+                        <li>Contoh: laporan harian, ETL, dbt</li>
+                        <li>Analogi: mesin cuci (kumpulkan, cuci sekaligus)</li>
+                        <li>Tools: DuckDB, Spark, dbt</li>
+                    </ul>
+                </div>
+                <div class="comparison-col">
+                    <h3>Stream (P13)</h3>
+                    <ul>
+                        <li>Proses SAAT DATA TIBA (real-time)</li>
+                        <li>Latensi: milidetik - detik</li>
+                        <li>Contoh: notifikasi, fraud, surge pricing</li>
+                        <li>Analogi: conveyor belt (proses sambil jalan)</li>
+                        <li>Tools: Kafka, Flink, Spark Streaming</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 6 — REAL-WORLD USE CASES
+         ========================================== -->
+    <section class="slide" data-slide="5">
+        <div class="accent-bar"></div>
+        <div class="bg-number">!</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Use Cases</p>
+            <h2 class="reveal">Streaming di Dunia Nyata</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>Fraud Detection</h4>
+                    <p>Bank mendeteksi transaksi mencurigakan dalam &lt; 100ms. Blokir kartu sebelum uang hilang.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Surge Pricing</h4>
+                    <p>Grab/Gojek menaikkan harga saat demand tinggi. Hitung real-time per zona per menit.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Trending Topics</h4>
+                    <p>Twitter/X menghitung hashtag trending setiap detik dari miliaran tweet.</p>
+                </div>
+                <div class="info-card">
+                    <h4>IoT Monitoring</h4>
+                    <p>Sensor pabrik mendeteksi suhu abnormal, langsung kirim alarm sebelum kerusakan.</p>
+                </div>
+                <div class="info-card">
+                    <h4>Stock Trading</h4>
+                    <p>High-frequency trading memproses ribuan order per detik, latensi mikro-detik.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 7 — KAFKA ARCHITECTURE
+         ========================================== -->
+    <section class="slide" data-slide="6">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Arsitektur</p>
+            <h2 class="reveal">Apache Kafka: Arsitektur Dasar</h2>
+            <div class="steps reveal">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-title">Producer</div>
+                    <div class="step-desc">Aplikasi yang MENGIRIM event/pesan ke Kafka (sensor, API, log server)</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-title">Topic</div>
+                    <div class="step-desc">Channel/kategori event. Seperti "inbox" untuk jenis pesan tertentu</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div class="step-title">Consumer</div>
+                    <div class="step-desc">Service yang MEMBACA dan memproses event dari topic</div>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Decoupled!</strong> Producer dan Consumer tidak perlu tahu satu sama lain. Banyak consumer bisa baca 1 topic.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 8 — KAFKA CONCEPTS
+         ========================================== -->
+    <section class="slide" data-slide="7">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Konsep Kafka</p>
+            <h2 class="reveal">Konsep-Konsep Penting Kafka</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>Producer</h4>
+                    <p>Aplikasi pengirim: sensor IoT, API endpoint, log server, mobile app</p>
+                </div>
+                <div class="info-card">
+                    <h4>Topic</h4>
+                    <p>Channel event berdasarkan kategori: "rides", "payments", "clicks"</p>
+                </div>
+                <div class="info-card">
+                    <h4>Consumer</h4>
+                    <p>Service pemroses: fraud detector, pricing engine, analytics pipeline</p>
+                </div>
+                <div class="info-card">
+                    <h4>Offset</h4>
+                    <p>Bookmark posisi baca. Bisa replay dari awal atau lanjut dari terakhir</p>
+                </div>
+                <div class="info-card">
+                    <h4>Consumer Group</h4>
+                    <p>Beberapa consumer berbagi beban. 1 partisi = 1 consumer dalam group</p>
+                </div>
+                <div class="info-card">
+                    <h4>Partition</h4>
+                    <p>Topic dipecah jadi partisi untuk parallelism. Urutan terjaga per partisi</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 9 — 3 JENIS WINDOWING
+         ========================================== -->
+    <section class="slide" data-slide="8">
+        <div class="accent-bar"></div>
+        <div class="bg-number">W</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Windowing</p>
+            <h2 class="reveal">3 Jenis Windowing</h2>
+            <div class="steps reveal">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-title">Tumbling Window</div>
+                    <div class="step-desc">Fixed size, TIDAK overlap. [0-5m] [5-10m] [10-15m]. Setiap event masuk tepat 1 window. Contoh: hitung order per 5 menit.</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-title">Sliding Window</div>
+                    <div class="step-desc">Fixed size, OVERLAP. Window 5m, slide 1m. Setiap event bisa masuk beberapa window. Contoh: moving average harga.</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div class="step-title">Session Window</div>
+                    <div class="step-desc">Ukuran dinamis, berdasarkan GAP. Jika idle &gt; threshold, window baru dimulai. Contoh: sesi browsing user.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 10 — EVENT SOURCING
+         ========================================== -->
+    <section class="slide" data-slide="9">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Pattern</p>
+            <h2 class="reveal">Event Sourcing</h2>
+            <div class="comparison reveal">
+                <div class="comparison-col alt">
+                    <h3>Traditional (State)</h3>
+                    <ul>
+                        <li>Simpan SALDO AKHIR: Rp 1.000.000</li>
+                        <li>Update langsung ke database</li>
+                        <li>Histori hilang setelah update</li>
+                        <li>Tidak bisa "replay" kejadian</li>
+                        <li>Sulit audit trail</li>
+                    </ul>
+                </div>
+                <div class="comparison-col">
+                    <h3>Event Sourcing</h3>
+                    <ul>
+                        <li>Simpan SEMUA transaksi sebagai event</li>
+                        <li>+5M, -2M, +3M, -1M, ... = saldo</li>
+                        <li>Replay: hitung ulang dari event pertama</li>
+                        <li>Audit trail lengkap otomatis</li>
+                        <li>Time travel: lihat saldo kapan saja</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Kafka = event log permanen.</strong> Semua event disimpan, bisa di-replay kapan saja.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 11 — DELIVERY GUARANTEES
+         ========================================== -->
+    <section class="slide" data-slide="10">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Konsep</p>
+            <h2 class="reveal">Delivery Guarantees</h2>
+            <div class="steps reveal">
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-title">At-Most-Once</div>
+                    <div class="step-desc">Kirim sekali, tidak ada retry. Bisa HILANG. Paling cepat, untuk data non-kritis (log, metrics).</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-title">At-Least-Once</div>
+                    <div class="step-desc">Retry sampai berhasil. Bisa DUPLIKAT. Consumer harus idempotent. Default Kafka.</div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div class="step-title">Exactly-Once</div>
+                    <div class="step-desc">Tepat sekali, tidak hilang, tidak duplikat. Paling lambat &amp; kompleks. Untuk payment/financial.</div>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Trade-off:</strong> Semakin kuat guarantee, semakin lambat throughput. Pilih sesuai kebutuhan bisnis!</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 12 — TOOLS COMPARISON
+         ========================================== -->
+    <section class="slide" data-slide="11">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Ekosistem</p>
+            <h2 class="reveal">Tools Stream Processing</h2>
+            <table class="data-table reveal">
+                <thead>
+                    <tr><th>Tool</th><th>Tipe</th><th>Bahasa</th><th>Keunggulan</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Apache Kafka</td><td>Message Broker</td><td>Java/Scala</td><td>Standar industri, ekosistem besar</td></tr>
+                    <tr><td>Apache Flink</td><td>Stream Processor</td><td>Java</td><td>Stateful, exactly-once, windowing kuat</td></tr>
+                    <tr><td>Redpanda</td><td>Message Broker</td><td>C++</td><td>Kafka-compatible, 10x lebih cepat, tanpa JVM</td></tr>
+                    <tr><td>Spark Streaming</td><td>Micro-batch</td><td>Python/Scala</td><td>Integrasi ML, batch + stream unified</td></tr>
+                    <tr><td>RisingWave</td><td>Streaming DB</td><td>Rust</td><td>SQL untuk streaming, materialized views</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 13 — SECTION: PRAKTIKUM
+         ========================================== -->
+    <section class="slide section-divider" data-slide="12">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 3</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Praktikum</h2>
+            <div class="section-num">03</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 14 — SIMULASI KAFKA
+         ========================================== -->
+    <section class="slide" data-slide="13">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 1</p>
+            <h2 class="reveal">Simulasi Kafka dengan Python</h2>
+            <div class="code-block reveal">
+                <code><span class="kw">from</span> collections <span class="kw">import</span> defaultdict
+<span class="kw">import</span> threading
+
+<span class="kw">class</span> <span class="fn">MessageBroker</span>:
+    <span class="str">"""Simulasi Kafka: topics, offsets, batch consume"""</span>
+    <span class="kw">def</span> <span class="fn">__init__</span>(self):
+        self.topics = defaultdict(<span class="kw">list</span>)
+        self.offsets = defaultdict(<span class="kw">int</span>)
+        self._lock = threading.<span class="fn">Lock</span>()
+
+    <span class="kw">def</span> <span class="fn">produce</span>(self, topic, event):
+        <span class="kw">with</span> self._lock:
+            event[<span class="str">'_offset'</span>] = <span class="fn">len</span>(self.topics[topic])
+            self.topics[topic].<span class="fn">append</span>(event)
+
+    <span class="kw">def</span> <span class="fn">consume</span>(self, topic, group=<span class="str">'default'</span>, batch=<span class="num">100</span>):
+        <span class="kw">with</span> self._lock:
+            key = <span class="str">f"</span>{topic}:{group}<span class="str">"</span>
+            start = self.offsets[key]
+            events = self.topics[topic][start:start+batch]
+            self.offsets[key] = start + <span class="fn">len</span>(events)
+            <span class="kw">return</span> events
+
+broker = <span class="fn">MessageBroker</span>()</code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Thread-safe + batch consume + offset tracking.</strong> Konsep 100% sama dengan Kafka asli.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 15 — RIDE EVENT PRODUCER
+         ========================================== -->
+    <section class="slide" data-slide="14">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 2</p>
+            <h2 class="reveal">Social Media Event Producer</h2>
+            <div class="code-block reveal">
+                <code>PLATFORMS = [<span class="str">'Instagram'</span>, <span class="str">'TikTok'</span>, <span class="str">'Twitter/X'</span>, <span class="str">'YouTube'</span>]
+EVENTS = [<span class="str">'post'</span>, <span class="str">'like'</span>, <span class="str">'comment'</span>, <span class="str">'share'</span>, <span class="str">'view'</span>]
+HASHTAGS = [<span class="str">'#BigData'</span>,<span class="str">'#AI'</span>,<span class="str">'#Viral'</span>,<span class="str">'#Trending'</span>,<span class="str">'#Indonesia'</span>]
+SENTIMENTS = [<span class="str">'positive'</span>, <span class="str">'negative'</span>, <span class="str">'neutral'</span>]
+
+<span class="kw">def</span> <span class="fn">gen_social_event</span>():
+    etype = random.<span class="fn">choices</span>(EVENTS,
+        weights=[.<span class="num">05</span>,.<span class="num">40</span>,.<span class="num">15</span>,.<span class="num">10</span>,.<span class="num">30</span>])[<span class="num">0</span>]
+    e = {
+        <span class="str">'event_type'</span>: etype,
+        <span class="str">'user_id'</span>: <span class="str">f'user_</span>{random.<span class="fn">randint</span>(<span class="num">1</span>,<span class="num">500</span>):04d}<span class="str">'</span>,
+        <span class="str">'platform'</span>: random.<span class="fn">choices</span>(PLATFORMS,
+            weights=[.<span class="num">35</span>,.<span class="num">30</span>,.<span class="num">20</span>,.<span class="num">15</span>])[<span class="num">0</span>],
+        <span class="str">'hashtags'</span>: random.<span class="fn">sample</span>(HASHTAGS,
+            k=random.<span class="fn">randint</span>(<span class="num">0</span>,<span class="num">3</span>)),
+    }
+    <span class="kw">if</span> etype <span class="kw">in</span> (<span class="str">'post'</span>,<span class="str">'comment'</span>):
+        e[<span class="str">'sentiment'</span>] = random.<span class="fn">choices</span>(
+            SENTIMENTS, weights=[.<span class="num">50</span>,.<span class="num">15</span>,.<span class="num">35</span>])[<span class="num">0</span>]
+    <span class="kw">return</span> e
+
+<span class="cm"># Produce 50K events</span>
+<span class="kw">for</span> _ <span class="kw">in</span> <span class="fn">range</span>(<span class="num">50_000</span>):
+    broker.<span class="fn">produce</span>(<span class="str">'social'</span>, <span class="fn">gen_social_event</span>())</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 16 — TUMBLING WINDOW
+         ========================================== -->
+    <section class="slide" data-slide="15">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 3</p>
+            <h2 class="reveal">Tumbling Window: Non-Overlapping</h2>
+            <div class="code-block reveal">
+                <code><span class="kw">class</span> <span class="fn">TumblingWindow</span>:
+    <span class="str">"""Fixed-size, non-overlapping windows"""</span>
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, size):
+        self.size = size
+        self.buf, self.results = [], []
+
+    <span class="kw">def</span> <span class="fn">add</span>(self, event):
+        self.buf.<span class="fn">append</span>(event)
+        <span class="kw">if</span> <span class="fn">len</span>(self.buf) >= self.size:
+            self.results.<span class="fn">append</span>(self.<span class="fn">_compute</span>())
+            self.buf = []
+
+    <span class="kw">def</span> <span class="fn">_compute</span>(self):
+        types = defaultdict(<span class="kw">int</span>)
+        hashtags = defaultdict(<span class="kw">int</span>)
+        <span class="kw">for</span> e <span class="kw">in</span> self.buf:
+            types[e[<span class="str">'event_type'</span>]] += <span class="num">1</span>
+            <span class="kw">for</span> h <span class="kw">in</span> e.get(<span class="str">'hashtags'</span>, []):
+                hashtags[h] += <span class="num">1</span>
+        sents = [e[<span class="str">'sentiment'</span>] <span class="kw">for</span> e <span class="kw">in</span> self.buf
+                 <span class="kw">if</span> <span class="str">'sentiment'</span> <span class="kw">in</span> e]
+        neg_pct = <span class="fn">sum</span>(<span class="num">1</span> <span class="kw">for</span> s <span class="kw">in</span> sents
+            <span class="kw">if</span> s==<span class="str">'negative'</span>) / <span class="fn">max</span>(<span class="fn">len</span>(sents),<span class="num">1</span>) * <span class="num">100</span>
+        <span class="kw">return</span> {
+            <span class="str">'window'</span>: <span class="fn">len</span>(self.results),
+            <span class="str">'users'</span>: <span class="fn">len</span>(<span class="fn">set</span>(e[<span class="str">'user_id'</span>]
+                <span class="kw">for</span> e <span class="kw">in</span> self.buf)),
+            <span class="str">'top_hashtag'</span>: <span class="fn">max</span>(hashtags,
+                key=hashtags.get) <span class="kw">if</span> hashtags <span class="kw">else</span> <span class="str">'-'</span>,
+            <span class="str">'neg_pct'</span>: <span class="fn">round</span>(neg_pct, <span class="num">1</span>),
+        }
+
+<span class="cm"># Process 50K events in windows of 2500</span>
+tw = <span class="fn">TumblingWindow</span>(<span class="num">2500</span>)
+all_events = broker.<span class="fn">consume</span>(<span class="str">'social'</span>, batch=<span class="num">50000</span>)
+<span class="kw">for</span> e <span class="kw">in</span> all_events: tw.<span class="fn">add</span>(e)
+
+<span class="kw">for</span> w_start, w_events <span class="kw">in</span> <span class="fn">sorted</span>(windows.<span class="fn">items</span>()):
+    avg_fare = <span class="fn">sum</span>(e[<span class="str">"fare"</span>] <span class="kw">for</span> e <span class="kw">in</span> w_events) / <span class="fn">len</span>(w_events)
+    <span class="fn">print</span>(<span class="str">f"Window </span>{w_start}<span class="str">: </span>{<span class="fn">len</span>(w_events)}<span class="str"> events, avg=Rp</span>{avg_fare:,.0f}<span class="str">"</span>)</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 17 — SLIDING WINDOW
+         ========================================== -->
+    <section class="slide" data-slide="16">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 4</p>
+            <h2 class="reveal">Sliding Window / Moving Average</h2>
+            <div class="code-block reveal">
+                <code><span class="kw">def</span> <span class="fn">sliding_window</span>(events, window_sec=<span class="num">300</span>, slide_sec=<span class="num">60</span>):
+    <span class="str">"""Window 5 menit, geser 1 menit. Events bisa masuk beberapa window."""</span>
+    <span class="kw">if not</span> events: <span class="kw">return</span> {}
+    results = {}
+    min_ts = <span class="fn">min</span>(e[<span class="str">"timestamp"</span>] <span class="kw">for</span> e <span class="kw">in</span> events)
+    max_ts = <span class="fn">max</span>(e[<span class="str">"timestamp"</span>] <span class="kw">for</span> e <span class="kw">in</span> events)
+    t = min_ts
+    <span class="kw">while</span> t &lt;= max_ts:
+        w_events = [e <span class="kw">for</span> e <span class="kw">in</span> events
+                    <span class="kw">if</span> t &lt;= e[<span class="str">"timestamp"</span>] &lt; t + window_sec]
+        <span class="kw">if</span> w_events:
+            avg = <span class="fn">sum</span>(e[<span class="str">"fare"</span>] <span class="kw">for</span> e <span class="kw">in</span> w_events) / <span class="fn">len</span>(w_events)
+            results[t] = {<span class="str">"count"</span>: <span class="fn">len</span>(w_events), <span class="str">"avg_fare"</span>: avg}
+        t += slide_sec
+    <span class="kw">return</span> results
+
+result = <span class="fn">sliding_window</span>(events)
+<span class="kw">for</span> t, v <span class="kw">in</span> <span class="fn">list</span>(result.<span class="fn">items</span>())[:<span class="num">5</span>]:
+    <span class="fn">print</span>(<span class="str">f"Window </span>{t:.0f}<span class="str">: </span>{v[<span class="str">'count'</span>]}<span class="str"> events, avg=Rp</span>{v[<span class="str">'avg_fare'</span>]:,.0f}<span class="str">"</span>)</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 18 — SURGE PRICING
+         ========================================== -->
+    <section class="slide" data-slide="17">
+        <div class="accent-bar"></div>
+        <div class="bg-number">$</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 5</p>
+            <h2 class="reveal">Surge Pricing Detector</h2>
+            <div class="code-block reveal">
+                <code><span class="kw">def</span> <span class="fn">detect_surge</span>(events, window_sec=<span class="num">60</span>, threshold=<span class="num">10</span>):
+    <span class="str">"""Deteksi surge: jika demand > threshold dalam window per zona"""</span>
+    zone_windows = defaultdict(<span class="kw">lambda</span>: defaultdict(<span class="kw">list</span>))
+    <span class="kw">for</span> e <span class="kw">in</span> events:
+        w = <span class="fn">int</span>(e[<span class="str">"timestamp"</span>] // window_sec) * window_sec
+        zone_windows[e[<span class="str">"zone"</span>]][w].<span class="fn">append</span>(e)
+
+    surges = []
+    <span class="kw">for</span> zone, windows <span class="kw">in</span> zone_windows.<span class="fn">items</span>():
+        <span class="kw">for</span> w, w_events <span class="kw">in</span> windows.<span class="fn">items</span>():
+            demand = <span class="fn">len</span>(w_events)
+            <span class="kw">if</span> demand >= threshold:
+                multiplier = <span class="num">1.0</span> + (demand - threshold) * <span class="num">0.1</span>
+                surges.<span class="fn">append</span>({<span class="str">"zone"</span>: zone, <span class="str">"demand"</span>: demand,
+                    <span class="str">"surge"</span>: <span class="fn">round</span>(multiplier, <span class="num">1</span>)})
+    <span class="kw">return</span> surges
+
+surges = <span class="fn">detect_surge</span>(events)
+<span class="kw">for</span> s <span class="kw">in</span> surges:
+    <span class="fn">print</span>(<span class="str">f"SURGE {s['zone']}: {s['demand']} orders, {s['surge']}x"</span>)</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 19 — IOT ANOMALY
+         ========================================== -->
+    <section class="slide" data-slide="18">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 6</p>
+            <h2 class="reveal">IoT Sensor: Producer + Anomaly Detector</h2>
+            <div class="code-block reveal">
+                <code>WAREHOUSES = {
+    <span class="str">'WH-JKT'</span>: {<span class="str">'name'</span>:<span class="str">'Gudang Jakarta'</span>, <span class="str">'type'</span>:<span class="str">'cold'</span>, <span class="str">'target'</span>:<span class="num">4</span>},
+    <span class="str">'WH-SBY'</span>: {<span class="str">'name'</span>:<span class="str">'Gudang Surabaya'</span>, <span class="str">'type'</span>:<span class="str">'dry'</span>,  <span class="str">'target'</span>:<span class="num">25</span>},
+}
+<span class="kw">def</span> <span class="fn">gen_sensor_event</span>():
+    wh = random.<span class="fn">choice</span>(<span class="fn">list</span>(WAREHOUSES))
+    info = WAREHOUSES[wh]
+    is_anomaly = random.<span class="fn">random</span>() &lt; <span class="num">0.05</span>
+    temp = info[<span class="str">'target'</span>] + (random.<span class="fn">uniform</span>(<span class="num">5</span>,<span class="num">15</span>)
+        <span class="kw">if</span> is_anomaly <span class="kw">else</span> random.<span class="fn">gauss</span>(<span class="num">0</span>,<span class="num">1</span>))
+    <span class="kw">return</span> {<span class="str">'warehouse'</span>: wh, <span class="str">'temp'</span>: <span class="fn">round</span>(temp,<span class="num">1</span>),
+            <span class="str">'humidity'</span>: <span class="fn">round</span>(random.<span class="fn">uniform</span>(<span class="num">40</span>,<span class="num">65</span>),<span class="num">1</span>),
+            <span class="str">'is_anomaly'</span>: is_anomaly}
+
+<span class="kw">class</span> <span class="fn">AnomalyDetector</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, threshold=<span class="num">3</span>):
+        self.threshold = threshold
+        self.buf = defaultdict(<span class="kw">list</span>)
+        self.alerts = []
+    <span class="kw">def</span> <span class="fn">process</span>(self, event):
+        <span class="kw">if</span> event.get(<span class="str">'is_anomaly'</span>):
+            wh = event[<span class="str">'warehouse'</span>]
+            self.buf[wh].<span class="fn">append</span>(event)
+            <span class="kw">if</span> <span class="fn">len</span>(self.buf[wh]) >= self.threshold:
+                self.alerts.<span class="fn">append</span>({<span class="str">'warehouse'</span>: wh,
+                    <span class="str">'temp'</span>: event[<span class="str">'temp'</span>],
+                    <span class="str">'severity'</span>: <span class="str">'HIGH'</span>})
+                self.buf[wh] = []</code>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 19b — EVENT SOURCING
+         ========================================== -->
+    <section class="slide" data-slide="19">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 7</p>
+            <h2 class="reveal">Event Sourcing: Shopping Cart</h2>
+            <div class="code-block reveal">
+                <code><span class="kw">class</span> <span class="fn">CartEventStore</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self): self.events = []
+    <span class="kw">def</span> <span class="fn">add</span>(self, uid, action, pid, qty=<span class="num">1</span>, price=<span class="num">0</span>):
+        self.events.<span class="fn">append</span>({<span class="str">'user'</span>:uid, <span class="str">'action'</span>:action,
+            <span class="str">'product'</span>:pid, <span class="str">'qty'</span>:qty, <span class="str">'price'</span>:price})
+    <span class="kw">def</span> <span class="fn">state</span>(self, uid):
+        cart = {}
+        <span class="kw">for</span> e <span class="kw">in</span> self.events:
+            <span class="kw">if</span> e[<span class="str">'user'</span>] != uid: <span class="kw">continue</span>
+            <span class="kw">if</span> e[<span class="str">'action'</span>] == <span class="str">'add'</span>:
+                cart[e[<span class="str">'product'</span>]] = {<span class="str">'qty'</span>: e[<span class="str">'qty'</span>], <span class="str">'price'</span>: e[<span class="str">'price'</span>]}
+            <span class="kw">elif</span> e[<span class="str">'action'</span>] == <span class="str">'remove'</span>:
+                cart.<span class="fn">pop</span>(e[<span class="str">'product'</span>], <span class="kw">None</span>)
+        <span class="kw">return</span> cart
+
+store = <span class="fn">CartEventStore</span>()
+store.<span class="fn">add</span>(<span class="str">'andi'</span>, <span class="str">'add'</span>, <span class="str">'iPhone-15'</span>, <span class="num">1</span>, <span class="num">15_000_000</span>)
+store.<span class="fn">add</span>(<span class="str">'andi'</span>, <span class="str">'add'</span>, <span class="str">'AirPods'</span>,  <span class="num">1</span>, <span class="num">2_500_000</span>)
+store.<span class="fn">add</span>(<span class="str">'andi'</span>, <span class="str">'remove'</span>, <span class="str">'AirPods'</span>)
+<span class="cm"># state('andi') → {'iPhone-15': ...}</span>
+<span class="cm"># events stored: 3 (full audit trail!)</span></code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Simpan SEMUA event, derive state kapan saja.</strong> Replay, audit, time travel — dasar Kafka Streams!</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 19c — SENSOR ANALYTICS DUCKDB
+         ========================================== -->
+    <section class="slide" data-slide="20">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Praktikum 8</p>
+            <h2 class="reveal">Sensor Analytics dengan DuckDB</h2>
+            <div class="code-block reveal">
+                <code><span class="cm"># Stream data → Polars DataFrame → DuckDB SQL</span>
+<span class="kw">import</span> polars <span class="kw">as</span> pl, duckdb
+
+df_s = pl.<span class="fn">DataFrame</span>([
+    {<span class="str">'warehouse'</span>: e[<span class="str">'warehouse'</span>], <span class="str">'wh_type'</span>: e[<span class="str">'wh_type'</span>],
+     <span class="str">'temp'</span>: e[<span class="str">'temp'</span>], <span class="str">'humidity'</span>: e[<span class="str">'humidity'</span>],
+     <span class="str">'is_anomaly'</span>: e[<span class="str">'is_anomaly'</span>]}
+    <span class="kw">for</span> e <span class="kw">in</span> sensor_events
+])
+con = duckdb.<span class="fn">connect</span>()
+con.<span class="fn">register</span>(<span class="str">'sensors'</span>, df_s)
+
+con.<span class="fn">sql</span>(<span class="str">"""
+  SELECT warehouse, wh_type,
+    ROUND(AVG(temp), 1) AS avg_temp,
+    ROUND(MIN(temp), 1) AS min_temp,
+    ROUND(MAX(temp), 1) AS max_temp,
+    SUM(is_anomaly::INT) AS anomalies,
+    ROUND(SUM(is_anomaly::INT)*100.0
+      / COUNT(*), 1) AS anomaly_pct
+  FROM sensors
+  GROUP BY warehouse, wh_type
+  ORDER BY anomaly_pct DESC
+"""</span>).<span class="fn">show</span>()</code>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Pattern: Stream → DataFrame → SQL Analytics.</strong> Gabungkan streaming + batch analysis!</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 20 — SECTION: TIPS & KESALAHAN UMUM
+         ========================================== -->
+    <section class="slide section-divider" data-slide="19">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 4</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Tips &<br>Kesalahan Umum</h2>
+            <div class="section-num">04</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 21 — KESALAHAN UMUM
+         ========================================== -->
+    <section class="slide" data-slide="20">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Hindari</p>
+            <h2 class="reveal">Kesalahan Umum Stream Processing</h2>
+            <ul class="content-list reveal">
+                <li><strong>Proses satu-satu tanpa window</strong> -- kehilangan konteks waktu. <em>Fix: Selalu gunakan windowing untuk agregasi.</em></li>
+                <li><strong>Tidak handle late events</strong> -- data telat masuk = hasil salah. <em>Fix: Watermark + allowed lateness.</em></li>
+                <li><strong>State tidak dibersihkan</strong> -- memory terus naik. <em>Fix: TTL (time-to-live) pada state.</em></li>
+                <li><strong>Tidak idempotent</strong> -- retry menyebabkan duplikat. <em>Fix: Dedup key atau exactly-once.</em></li>
+                <li><strong>Window terlalu kecil</strong> -- noise tinggi, alert palsu. <em>Fix: Sesuaikan window size dengan use case.</em></li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 22 — DISKUSI
+         ========================================== -->
+    <section class="slide" data-slide="21">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Refleksi</p>
+            <h2 class="reveal">Diskusi & Pertanyaan</h2>
+            <div class="info-grid reveal">
+                <div class="info-card">
+                    <h4>Q1</h4>
+                    <p>Kapan pakai batch vs stream? (latensi requirement, cost, complexity)</p>
+                </div>
+                <div class="info-card">
+                    <h4>Q2</h4>
+                    <p>Kenapa Kafka tidak langsung proses data? (separation of concerns, decoupling)</p>
+                </div>
+                <div class="info-card">
+                    <h4>Q3</h4>
+                    <p>Tumbling vs sliding window: kapan pakai masing-masing? (overlap vs non-overlap)</p>
+                </div>
+                <div class="info-card">
+                    <h4>Q4</h4>
+                    <p>Apa risiko exactly-once semantics? (latency, throughput, complexity)</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 23 — RINGKASAN
+         ========================================== -->
+    <section class="slide" data-slide="22">
+        <div class="accent-bar"></div>
+        <div class="bg-number">&#10003;</div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Ringkasan</p>
+            <h2 class="reveal">Apa yang Sudah Kita Pelajari</h2>
+            <ul class="content-list reveal">
+                <li><strong>Batch vs Stream</strong> -- batch proses sekaligus (menit-jam), stream proses real-time (ms-detik)</li>
+                <li><strong>Kafka</strong> -- message broker standar industri: Producer, Topic, Consumer, Offset</li>
+                <li><strong>Windowing</strong> -- Tumbling (non-overlap), Sliding (overlap), Session (gap-based)</li>
+                <li><strong>Event Sourcing</strong> -- simpan SEMUA event, bisa replay dan time-travel</li>
+                <li><strong>Delivery Guarantees</strong> -- at-most-once, at-least-once, exactly-once (trade-off)</li>
+                <li><strong>Real-world</strong> -- surge pricing, fraud detection, IoT monitoring, trending topics</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 24 — SECTION: STUDI KASUS & TUGAS
+         ========================================== -->
+    <section class="slide section-divider" data-slide="23">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Bagian 5</p>
+            <h2 class="reveal" style="font-size: clamp(2rem, 6vw, 5rem);">Studi Kasus<br>& Tugas</h2>
+            <div class="section-num">05</div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 25 — TUGAS: TWITTER SENTIMENT + WEATHER
+         ========================================== -->
+    <section class="slide" data-slide="24">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Studi Kasus</p>
+            <h2 class="reveal">Twitter Sentiment140 (1.6M) + Open-Meteo Weather API</h2>
+            <div class="two-col reveal">
+                <div>
+                    <h3 style="font-size: clamp(0.8rem, 1.2vw, 1rem); margin-bottom: var(--element-gap);">Dataset A: Sentiment140</h3>
+                    <ul class="content-list">
+                        <li>1.6 juta tweet dengan label sentimen (positif/negatif)</li>
+                        <li>Simulasi stream: baca per-batch dari CSV</li>
+                        <li>Tumbling window: sentimen per jam</li>
+                        <li>Sliding window: moving average sentimen</li>
+                        <li>Deteksi anomali: lonjakan negatif</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 style="font-size: clamp(0.8rem, 1.2vw, 1rem); margin-bottom: var(--element-gap);">Dataset B: Open-Meteo API</h3>
+                    <ul class="content-list">
+                        <li>API cuaca gratis (tanpa API key)</li>
+                        <li>Simulasi IoT sensor dari data cuaca</li>
+                        <li>Stream suhu per jam ke broker</li>
+                        <li>Deteksi anomali cuaca ekstrem</li>
+                        <li>Korelasi cuaca vs sentimen tweet</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="tip-box reveal">
+                <p><strong>Kumpulkan:</strong> notebook (.ipynb) + screenshot hasil di Google Colab</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         SLIDE 26 — REFERENSI
+         ========================================== -->
+    <section class="slide" data-slide="25">
+        <div class="accent-bar"></div>
+        <div class="slide-content">
+            <p class="tag-label reveal">Referensi</p>
+            <h2 class="reveal">Bahan Belajar Mandiri</h2>
+            <ul class="content-list reveal">
+                <li><strong>Kafka Course (Gratis):</strong> developer.confluent.io/courses</li>
+                <li><strong>Kafka Docs:</strong> kafka.apache.org/documentation</li>
+                <li><strong>Flink Training:</strong> nightlies.apache.org/flink/flink-docs-stable/docs/learn-flink/overview</li>
+                <li><strong>Sentiment140:</strong> kaggle.com/datasets/kazanova/sentiment140</li>
+                <li><strong>Open-Meteo API:</strong> open-meteo.com/en/docs</li>
+                <li><strong>Buku:</strong> Martin Kleppmann -- Designing Data-Intensive Applications (O'Reilly)</li>
+                <li><strong>Buku:</strong> Joe Reis & Matt Housley -- Fundamentals of Data Engineering (O'Reilly)</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ===========================================
+         JAVASCRIPT: Presentation Controller
+         =========================================== -->
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.isScrolling = false;
+                this.setupIntersectionObserver();
+                this.setupKeyboardNav();
+                this.setupTouchNav();
+                this.setupWheelNav();
+                this.setupProgressBar();
+                this.setupNavDots();
+            }
+
+            setupIntersectionObserver() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            const idx = Array.from(this.slides).indexOf(entry.target);
+                            if (idx !== -1) {
+                                this.currentSlide = idx;
+                                this.updateProgressBar();
+                                this.updateNavDots();
+                            }
+                        }
+                    });
+                }, { threshold: 0.5 });
+                this.slides.forEach(slide => observer.observe(slide));
+            }
+
+            goToSlide(index) {
+                if (index >= 0 && index < this.slides.length) {
+                    this.slides[index].scrollIntoView({ behavior: 'smooth' });
+                    this.currentSlide = index;
+                    this.updateProgressBar();
+                    this.updateNavDots();
+                }
+            }
+
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.target.getAttribute && e.target.getAttribute('contenteditable') === 'true') return;
+                    switch(e.key) {
+                        case 'ArrowDown': case 'ArrowRight': case ' ': case 'PageDown':
+                            e.preventDefault(); this.goToSlide(this.currentSlide + 1); break;
+                        case 'ArrowUp': case 'ArrowLeft': case 'PageUp':
+                            e.preventDefault(); this.goToSlide(this.currentSlide - 1); break;
+                        case 'Home': e.preventDefault(); this.goToSlide(0); break;
+                        case 'End': e.preventDefault(); this.goToSlide(this.slides.length - 1); break;
+                    }
+                });
+            }
+
+            setupTouchNav() {
+                let startY = 0;
+                document.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; }, { passive: true });
+                document.addEventListener('touchend', (e) => {
+                    const diff = startY - e.changedTouches[0].clientY;
+                    if (Math.abs(diff) > 50) {
+                        diff > 0 ? this.goToSlide(this.currentSlide + 1) : this.goToSlide(this.currentSlide - 1);
+                    }
+                }, { passive: true });
+            }
+
+            setupWheelNav() {
+                let timeout;
+                document.addEventListener('wheel', (e) => {
+                    if (this.isScrolling) return;
+                    this.isScrolling = true;
+                    clearTimeout(timeout);
+                    if (e.deltaY > 30) this.goToSlide(this.currentSlide + 1);
+                    else if (e.deltaY < -30) this.goToSlide(this.currentSlide - 1);
+                    timeout = setTimeout(() => { this.isScrolling = false; }, 800);
+                }, { passive: true });
+            }
+
+            setupProgressBar() {
+                this.progressBar = document.getElementById('progressBar');
+                this.updateProgressBar();
+            }
+
+            updateProgressBar() {
+                const pct = ((this.currentSlide + 1) / this.slides.length) * 100;
+                if (this.progressBar) this.progressBar.style.width = pct + '%';
+            }
+
+            setupNavDots() {
+                const container = document.getElementById('navDots');
+                if (!container) return;
+                this.slides.forEach((_, i) => {
+                    const dot = document.createElement('button');
+                    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+                    dot.addEventListener('click', () => this.goToSlide(i));
+                    dot.setAttribute('aria-label', `Slide ${i + 1}`);
+                    container.appendChild(dot);
+                });
+                this.dots = container.querySelectorAll('.nav-dot');
+            }
+
+            updateNavDots() {
+                if (!this.dots) return;
+                this.dots.forEach((dot, i) => {
+                    dot.classList.toggle('active', i === this.currentSlide);
+                });
+            }
+        }
+
+        /* ===========================================
+           INLINE EDITOR
+           =========================================== */
+        class InlineEditor {
+            constructor() {
+                this.isActive = false;
+                this.storageKey = 'slides-p13-edits';
+                this.loadEdits();
+            }
+
+            toggleEditMode() {
+                this.isActive = !this.isActive;
+                document.body.classList.toggle('editing-active', this.isActive);
+                document.getElementById('editToggle').classList.toggle('active', this.isActive);
+                const editables = document.querySelectorAll('h1,h2,h3,h4,p,li,span,.step-desc,.step-title,.tag');
+                editables.forEach(el => {
+                    if (el.closest('.nav-dots') || el.closest('.edit-toggle')) return;
+                    el.contentEditable = this.isActive ? 'true' : 'false';
+                });
+                if (this.isActive) {
+                    document.addEventListener('input', this._saveHandler = () => this.saveEdits());
+                } else {
+                    document.removeEventListener('input', this._saveHandler);
+                    this.saveEdits();
+                }
+            }
+
+            saveEdits() {
+                const data = {};
+                document.querySelectorAll('.slide').forEach((slide, i) => {
+                    data[i] = slide.innerHTML;
+                });
+                try { localStorage.setItem(this.storageKey, JSON.stringify(data)); } catch(e) {}
+                const notice = document.getElementById('saveNotice');
+                notice.classList.add('show');
+                setTimeout(() => notice.classList.remove('show'), 1200);
+            }
+
+            loadEdits() {
+                try {
+                    const data = JSON.parse(localStorage.getItem(this.storageKey));
+                    if (!data) return;
+                    document.querySelectorAll('.slide').forEach((slide, i) => {
+                        if (data[i]) slide.innerHTML = data[i];
+                    });
+                } catch(e) {}
+            }
+        }
+
+        /* Init */
+        const presentation = new SlidePresentation();
+        const editor = new InlineEditor();
+
+        /* Edit hotzone + toggle */
+        const hotzone = document.getElementById('editHotzone');
+        const editToggle = document.getElementById('editToggle');
+        let hideTimeout = null;
+        hotzone.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); editToggle.classList.add('show'); });
+        hotzone.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+        editToggle.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); });
+        editToggle.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+        editToggle.addEventListener('click', () => editor.toggleEditMode());
+        hotzone.addEventListener('click', () => editor.toggleEditMode());
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) editor.toggleEditMode();
+        });
+    </script>
+</body>
+</html>
