@@ -95,6 +95,35 @@
         .state-box{background:var(--bg-alt);border:1px solid var(--border);border-radius:8px;padding:clamp(.4rem,.8vw,.7rem) clamp(.6rem,1vw,1rem);font-family:var(--font-m);font-size:var(--sm);color:var(--text-sub);display:flex;gap:clamp(.5rem,1.5vw,1.5rem);flex-wrap:wrap}
         .state-box .label{color:var(--text-muted);font-weight:400}
         .state-box .val{font-weight:600;color:var(--sc,var(--accent))}
+
+        /* === Slide A & B: Motivasi === */
+        .hero-mesh{position:absolute;inset:0;overflow:hidden;z-index:0}
+        .hero-mesh::before{content:'';position:absolute;inset:-40%;width:180%;height:180%;background:
+            radial-gradient(ellipse at 20% 30%,#1e3a5fcc 0%,transparent 55%),
+            radial-gradient(ellipse at 75% 60%,#0d9488aa 0%,transparent 50%),
+            radial-gradient(ellipse at 50% 80%,#6366f1aa 0%,transparent 50%),
+            radial-gradient(ellipse at 30% 70%,#1e293bdd 0%,transparent 60%);
+            animation:meshDrift 12s ease-in-out infinite alternate}
+        .hero-mesh::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,#0f172acc 0%,#1e293b99 40%,#0f172add 100%)}
+        @keyframes meshDrift{0%{transform:translate(0,0) rotate(0deg) scale(1)}50%{transform:translate(-3%,2%) rotate(1.5deg) scale(1.03)}100%{transform:translate(2%,-2%) rotate(-1deg) scale(1.01)}}
+
+        .hero-split{display:grid;grid-template-columns:1fr auto 1fr;gap:clamp(1rem,3vw,2.5rem);align-items:center;margin-top:clamp(.8rem,2vh,1.5rem)}
+        .hero-side{display:flex;flex-direction:column;align-items:center;gap:clamp(.5rem,1vh,.8rem)}
+        .hero-side-label{font-family:var(--font-d);font-size:var(--sm);font-weight:600;text-align:center;line-height:1.35;color:rgba(255,255,255,.75)}
+        .hero-arrow{font-size:clamp(2rem,4vw,3.5rem);color:rgba(255,255,255,.5);animation:pulseArrow 2s ease-in-out infinite}
+        @keyframes pulseArrow{0%,100%{opacity:.4;transform:translateX(0)}50%{opacity:1;transform:translateX(6px)}}
+
+        @keyframes chaosFloat{0%{transform:translate(0,0)}25%{transform:translate(3px,-4px)}50%{transform:translate(-2px,5px)}75%{transform:translate(4px,2px)}100%{transform:translate(0,0)}}
+        .chaos-el{animation:chaosFloat 4s ease-in-out infinite}
+        .chaos-el:nth-child(odd){animation-duration:3.2s;animation-direction:reverse}
+
+        .glass-card{background:rgba(255,255,255,.07);backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4);border:1px solid rgba(255,255,255,.13);border-radius:clamp(10px,1.2vw,16px);padding:clamp(.8rem,1.8vw,1.4rem);display:flex;flex-direction:column;align-items:center;gap:clamp(.3rem,.6vh,.5rem);transition:transform .35s var(--ease),box-shadow .35s var(--ease)}
+        .glass-card:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,.25)}
+        .glass-card h3{font-size:var(--body);font-weight:700;color:#fff;text-align:center}
+        .glass-card p{font-size:var(--sm);color:rgba(255,255,255,.6);text-align:center;line-height:1.45}
+        .four-col{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(.6rem,1.5vw,1.2rem)}
+        @media(max-width:900px){.four-col{grid-template-columns:repeat(2,1fr)}}
+        @media(max-width:550px){.four-col{grid-template-columns:1fr}.hero-split{grid-template-columns:1fr;gap:.8rem}.hero-arrow{transform:rotate(90deg)}}
     </style>
 </head>
 <body>
@@ -110,6 +139,277 @@
         <div class="rv" style="font-family:var(--font-m);font-size:var(--body);color:var(--text-muted);letter-spacing:.15em;text-transform:uppercase;margin-bottom:clamp(.5rem,1.5vh,1rem);">Materi Clustering</div>
         <h1 class="rv d1">Self-Organizing Maps</h1>
         <p class="rv d2" style="font-size:clamp(1.3rem,2.5vw,1.8rem);color:var(--text-muted);margin-top:clamp(.5rem,1vh,1rem);">Kohonen Maps — Jaringan Saraf Tiruan<br>untuk Clustering & Visualisasi Data</p>
+    </div>
+</section>
+
+<!-- ===== 1b: MENGAPA SOM — Hero Problem Statement ===== -->
+<section class="slide" style="--sc:var(--indigo);background:#0f172a;">
+    <div class="hero-mesh"></div>
+    <div class="slide-content" style="position:relative;z-index:1;">
+        <div class="sec rv" style="--sc:rgba(255,255,255,.45);color:rgba(255,255,255,.45);">00 — Motivasi</div>
+        <h2 class="rv d1" style="color:#fff;">Bagaimana Memetakan Kompleksitas ke Peta 2D?</h2>
+        <p class="rv d2" style="color:rgba(255,255,255,.55);font-size:var(--sm);margin-bottom:0;">Ditemukan 1982 oleh <strong style="color:#67e8f9;">Teuvo Kohonen</strong> — Digunakan di <strong style="color:#a5b4fc;">10.000+ Publikasi Ilmiah</strong></p>
+
+        <div class="hero-split rv d3">
+            <!-- Left: Chaotic high-dimensional data -->
+            <div class="hero-side">
+                <svg viewBox="0 0 200 180" style="width:100%;max-width:280px;">
+                    <!-- Tangled lines -->
+                    <g stroke="rgba(255,255,255,.18)" stroke-width="1" fill="none">
+                        <path class="chaos-el" d="M30 40 Q80 10 130 55 T180 30"/>
+                        <path class="chaos-el" d="M20 90 Q60 40 110 95 T170 70"/>
+                        <path class="chaos-el" d="M40 130 Q90 80 140 120 T190 100"/>
+                        <path class="chaos-el" d="M15 60 Q70 110 120 50 T185 120"/>
+                        <path class="chaos-el" d="M50 20 Q100 90 150 35 T180 140"/>
+                        <path class="chaos-el" d="M25 150 Q80 60 130 140 T175 55"/>
+                        <path class="chaos-el" d="M60 70 Q40 130 100 80 T160 110"/>
+                    </g>
+                    <!-- Chaotic overlapping circles -->
+                    <circle class="chaos-el" cx="55" cy="45" r="14" fill="rgba(99,102,241,.35)" stroke="rgba(99,102,241,.5)" stroke-width="1"/>
+                    <circle class="chaos-el" cx="90" cy="35" r="10" fill="rgba(37,99,235,.3)" stroke="rgba(37,99,235,.5)" stroke-width="1"/>
+                    <circle class="chaos-el" cx="75" cy="70" r="12" fill="rgba(217,119,6,.3)" stroke="rgba(217,119,6,.5)" stroke-width="1"/>
+                    <circle class="chaos-el" cx="130" cy="55" r="16" fill="rgba(225,29,72,.25)" stroke="rgba(225,29,72,.45)" stroke-width="1"/>
+                    <circle class="chaos-el" cx="110" cy="90" r="11" fill="rgba(13,148,136,.35)" stroke="rgba(13,148,136,.5)" stroke-width="1"/>
+                    <circle class="chaos-el" cx="45" cy="100" r="13" fill="rgba(124,58,237,.3)" stroke="rgba(124,58,237,.5)" stroke-width="1"/>
+                    <circle class="chaos-el" cx="150" cy="95" r="9" fill="rgba(37,99,235,.35)" stroke="rgba(37,99,235,.5)" stroke-width="1"/>
+                    <circle class="chaos-el" cx="70" cy="130" r="15" fill="rgba(99,102,241,.25)" stroke="rgba(99,102,241,.45)" stroke-width="1"/>
+                    <circle class="chaos-el" cx="120" cy="125" r="12" fill="rgba(225,29,72,.3)" stroke="rgba(225,29,72,.45)" stroke-width="1"/>
+                    <circle class="chaos-el" cx="160" cy="130" r="10" fill="rgba(13,148,136,.3)" stroke="rgba(13,148,136,.5)" stroke-width="1"/>
+                    <circle class="chaos-el" cx="95" cy="155" r="8" fill="rgba(217,119,6,.35)" stroke="rgba(217,119,6,.5)" stroke-width="1"/>
+                    <circle class="chaos-el" cx="40" cy="145" r="11" fill="rgba(37,99,235,.25)" stroke="rgba(37,99,235,.45)" stroke-width="1"/>
+                    <!-- Question mark -->
+                    <text x="100" y="105" text-anchor="middle" font-size="48" fill="rgba(255,255,255,.12)" font-weight="800" font-family="Plus Jakarta Sans">?</text>
+                </svg>
+                <div class="hero-side-label">Data Berdimensi Tinggi<br>Mustahil Divisualisasi?</div>
+            </div>
+
+            <!-- Arrow -->
+            <div class="hero-arrow rv d4">&#10132;</div>
+
+            <!-- Right: Organized SOM color grid -->
+            <div class="hero-side">
+                <svg viewBox="0 0 200 180" style="width:100%;max-width:280px;">
+                    <!-- 8x7 organized color grid -->
+                    <g>
+                        <!-- Row 0 -->
+                        <rect x="12" y="10" width="22" height="22" rx="3" fill="#1e3a8a" opacity=".9"/>
+                        <rect x="36" y="10" width="22" height="22" rx="3" fill="#1e40af" opacity=".9"/>
+                        <rect x="60" y="10" width="22" height="22" rx="3" fill="#2563eb" opacity=".9"/>
+                        <rect x="84" y="10" width="22" height="22" rx="3" fill="#3b82f6" opacity=".9"/>
+                        <rect x="108" y="10" width="22" height="22" rx="3" fill="#60a5fa" opacity=".9"/>
+                        <rect x="132" y="10" width="22" height="22" rx="3" fill="#7dd3fc" opacity=".9"/>
+                        <rect x="156" y="10" width="22" height="22" rx="3" fill="#a5f3fc" opacity=".9"/>
+                        <!-- Row 1 -->
+                        <rect x="12" y="34" width="22" height="22" rx="3" fill="#312e81" opacity=".9"/>
+                        <rect x="36" y="34" width="22" height="22" rx="3" fill="#3730a3" opacity=".9"/>
+                        <rect x="60" y="34" width="22" height="22" rx="3" fill="#4f46e5" opacity=".9"/>
+                        <rect x="84" y="34" width="22" height="22" rx="3" fill="#6366f1" opacity=".9"/>
+                        <rect x="108" y="34" width="22" height="22" rx="3" fill="#818cf8" opacity=".9"/>
+                        <rect x="132" y="34" width="22" height="22" rx="3" fill="#a5b4fc" opacity=".9"/>
+                        <rect x="156" y="34" width="22" height="22" rx="3" fill="#c4b5fd" opacity=".9"/>
+                        <!-- Row 2 -->
+                        <rect x="12" y="58" width="22" height="22" rx="3" fill="#581c87" opacity=".9"/>
+                        <rect x="36" y="58" width="22" height="22" rx="3" fill="#7e22ce" opacity=".9"/>
+                        <rect x="60" y="58" width="22" height="22" rx="3" fill="#9333ea" opacity=".9"/>
+                        <rect x="84" y="58" width="22" height="22" rx="3" fill="#a855f7" opacity=".9"/>
+                        <rect x="108" y="58" width="22" height="22" rx="3" fill="#c084fc" opacity=".9"/>
+                        <rect x="132" y="58" width="22" height="22" rx="3" fill="#d8b4fe" opacity=".9"/>
+                        <rect x="156" y="58" width="22" height="22" rx="3" fill="#e9d5ff" opacity=".9"/>
+                        <!-- Row 3 -->
+                        <rect x="12" y="82" width="22" height="22" rx="3" fill="#831843" opacity=".9"/>
+                        <rect x="36" y="82" width="22" height="22" rx="3" fill="#be185d" opacity=".9"/>
+                        <rect x="60" y="82" width="22" height="22" rx="3" fill="#e11d48" opacity=".9"/>
+                        <rect x="84" y="82" width="22" height="22" rx="3" fill="#f43f5e" opacity=".9"/>
+                        <rect x="108" y="82" width="22" height="22" rx="3" fill="#fb7185" opacity=".9"/>
+                        <rect x="132" y="82" width="22" height="22" rx="3" fill="#fda4af" opacity=".9"/>
+                        <rect x="156" y="82" width="22" height="22" rx="3" fill="#fecdd3" opacity=".9"/>
+                        <!-- Row 4 -->
+                        <rect x="12" y="106" width="22" height="22" rx="3" fill="#7c2d12" opacity=".9"/>
+                        <rect x="36" y="106" width="22" height="22" rx="3" fill="#c2410c" opacity=".9"/>
+                        <rect x="60" y="106" width="22" height="22" rx="3" fill="#ea580c" opacity=".9"/>
+                        <rect x="84" y="106" width="22" height="22" rx="3" fill="#f97316" opacity=".9"/>
+                        <rect x="108" y="106" width="22" height="22" rx="3" fill="#fb923c" opacity=".9"/>
+                        <rect x="132" y="106" width="22" height="22" rx="3" fill="#fdba74" opacity=".9"/>
+                        <rect x="156" y="106" width="22" height="22" rx="3" fill="#fed7aa" opacity=".9"/>
+                        <!-- Row 5 -->
+                        <rect x="12" y="130" width="22" height="22" rx="3" fill="#14532d" opacity=".9"/>
+                        <rect x="36" y="130" width="22" height="22" rx="3" fill="#166534" opacity=".9"/>
+                        <rect x="60" y="130" width="22" height="22" rx="3" fill="#16a34a" opacity=".9"/>
+                        <rect x="84" y="130" width="22" height="22" rx="3" fill="#22c55e" opacity=".9"/>
+                        <rect x="108" y="130" width="22" height="22" rx="3" fill="#4ade80" opacity=".9"/>
+                        <rect x="132" y="130" width="22" height="22" rx="3" fill="#86efac" opacity=".9"/>
+                        <rect x="156" y="130" width="22" height="22" rx="3" fill="#bbf7d0" opacity=".9"/>
+                        <!-- Row 6 -->
+                        <rect x="12" y="154" width="22" height="22" rx="3" fill="#134e4a" opacity=".9"/>
+                        <rect x="36" y="154" width="22" height="22" rx="3" fill="#115e59" opacity=".9"/>
+                        <rect x="60" y="154" width="22" height="22" rx="3" fill="#0d9488" opacity=".9"/>
+                        <rect x="84" y="154" width="22" height="22" rx="3" fill="#14b8a6" opacity=".9"/>
+                        <rect x="108" y="154" width="22" height="22" rx="3" fill="#2dd4bf" opacity=".9"/>
+                        <rect x="132" y="154" width="22" height="22" rx="3" fill="#5eead4" opacity=".9"/>
+                        <rect x="156" y="154" width="22" height="22" rx="3" fill="#99f6e4" opacity=".9"/>
+                    </g>
+                </svg>
+                <div class="hero-side-label">SOM Mengorganisir Sendiri!</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== 1c: SOM DI DUNIA NYATA ===== -->
+<section class="slide" style="--sc:var(--teal);background:#0f172a;">
+    <div class="hero-mesh"></div>
+    <div class="slide-content" style="position:relative;z-index:1;">
+        <div class="sec rv" style="--sc:rgba(255,255,255,.45);color:rgba(255,255,255,.45);">00 — Motivasi</div>
+        <h2 class="rv d1" style="color:#fff;">SOM di Dunia Nyata</h2>
+        <p class="rv d2" style="color:rgba(255,255,255,.5);margin-bottom:clamp(.6rem,1.5vh,1rem);">Dari warna hingga penipuan — SOM memetakan hal yang tak terlihat.</p>
+
+        <div class="four-col">
+            <!-- Card 1: Peta Warna -->
+            <div class="glass-card rv d2">
+                <svg viewBox="0 0 120 120" style="width:100%;max-width:120px;">
+                    <rect x="8" y="8" width="24" height="24" rx="4" fill="#dc2626"/>
+                    <rect x="34" y="8" width="24" height="24" rx="4" fill="#ea580c"/>
+                    <rect x="60" y="8" width="24" height="24" rx="4" fill="#f59e0b"/>
+                    <rect x="86" y="8" width="24" height="24" rx="4" fill="#eab308"/>
+                    <rect x="8" y="34" width="24" height="24" rx="4" fill="#e11d48"/>
+                    <rect x="34" y="34" width="24" height="24" rx="4" fill="#f97316"/>
+                    <rect x="60" y="34" width="24" height="24" rx="4" fill="#fbbf24"/>
+                    <rect x="86" y="34" width="24" height="24" rx="4" fill="#a3e635"/>
+                    <rect x="8" y="60" width="24" height="24" rx="4" fill="#be185d"/>
+                    <rect x="34" y="60" width="24" height="24" rx="4" fill="#c084fc"/>
+                    <rect x="60" y="60" width="24" height="24" rx="4" fill="#22c55e"/>
+                    <rect x="86" y="60" width="24" height="24" rx="4" fill="#4ade80"/>
+                    <rect x="8" y="86" width="24" height="24" rx="4" fill="#7c3aed"/>
+                    <rect x="34" y="86" width="24" height="24" rx="4" fill="#6366f1"/>
+                    <rect x="60" y="86" width="24" height="24" rx="4" fill="#0d9488"/>
+                    <rect x="86" y="86" width="24" height="24" rx="4" fill="#06b6d4"/>
+                </svg>
+                <h3>Peta Warna</h3>
+                <p>Ruang warna RGB diorganisir menjadi gradien 2D yang teratur otomatis.</p>
+            </div>
+
+            <!-- Card 2: Peta Musik -->
+            <div class="glass-card rv d3">
+                <svg viewBox="0 0 120 120" style="width:100%;max-width:120px;">
+                    <!-- Grid background -->
+                    <rect x="4" y="4" width="112" height="112" rx="8" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.1)" stroke-width=".5"/>
+                    <!-- Jazz region -->
+                    <rect x="8" y="8" width="50" height="50" rx="6" fill="rgba(99,102,241,.25)" stroke="rgba(99,102,241,.35)" stroke-width=".5"/>
+                    <text x="33" y="24" text-anchor="middle" font-size="16" fill="rgba(165,180,252,.8)">&#9835;</text>
+                    <text x="20" y="42" text-anchor="middle" font-size="12" fill="rgba(165,180,252,.8)">&#9834;</text>
+                    <text x="45" y="48" text-anchor="middle" font-size="10" fill="rgba(165,180,252,.6)">&#9836;</text>
+                    <text x="33" y="55" text-anchor="middle" font-size="7" fill="rgba(165,180,252,.9)" font-weight="600" font-family="Plus Jakarta Sans">Jazz</text>
+                    <!-- Rock region -->
+                    <rect x="62" y="8" width="50" height="50" rx="6" fill="rgba(225,29,72,.2)" stroke="rgba(225,29,72,.35)" stroke-width=".5"/>
+                    <text x="87" y="26" text-anchor="middle" font-size="18" fill="rgba(251,113,133,.8)">&#9835;</text>
+                    <text x="75" y="44" text-anchor="middle" font-size="14" fill="rgba(251,113,133,.7)">&#9834;</text>
+                    <text x="100" y="40" text-anchor="middle" font-size="10" fill="rgba(251,113,133,.6)">&#9836;</text>
+                    <text x="87" y="55" text-anchor="middle" font-size="7" fill="rgba(251,113,133,.9)" font-weight="600" font-family="Plus Jakarta Sans">Rock</text>
+                    <!-- Pop region -->
+                    <rect x="8" y="62" width="50" height="50" rx="6" fill="rgba(13,148,136,.2)" stroke="rgba(13,148,136,.35)" stroke-width=".5"/>
+                    <text x="33" y="80" text-anchor="middle" font-size="14" fill="rgba(94,234,212,.8)">&#9835;</text>
+                    <text x="22" y="96" text-anchor="middle" font-size="10" fill="rgba(94,234,212,.6)">&#9834;</text>
+                    <text x="46" y="100" text-anchor="middle" font-size="16" fill="rgba(94,234,212,.7)">&#9836;</text>
+                    <text x="33" y="109" text-anchor="middle" font-size="7" fill="rgba(94,234,212,.9)" font-weight="600" font-family="Plus Jakarta Sans">Pop</text>
+                    <!-- Classical region -->
+                    <rect x="62" y="62" width="50" height="50" rx="6" fill="rgba(217,119,6,.2)" stroke="rgba(217,119,6,.35)" stroke-width=".5"/>
+                    <text x="87" y="80" text-anchor="middle" font-size="12" fill="rgba(253,186,116,.8)">&#9835;</text>
+                    <text x="78" y="96" text-anchor="middle" font-size="16" fill="rgba(253,186,116,.7)">&#9834;</text>
+                    <text x="98" y="92" text-anchor="middle" font-size="10" fill="rgba(253,186,116,.6)">&#9836;</text>
+                    <text x="87" y="109" text-anchor="middle" font-size="7" fill="rgba(253,186,116,.9)" font-weight="600" font-family="Plus Jakarta Sans">Klasik</text>
+                </svg>
+                <h3>Peta Musik</h3>
+                <p>Lagu dikelompokkan berdasarkan fitur audio ke kluster genre otomatis.</p>
+            </div>
+
+            <!-- Card 3: Analisis Gen -->
+            <div class="glass-card rv d4">
+                <svg viewBox="0 0 120 120" style="width:100%;max-width:120px;">
+                    <!-- DNA helix backbone -->
+                    <path d="M35 10 Q60 30 35 50 Q10 70 35 90 Q60 110 35 120" fill="none" stroke="rgba(165,180,252,.4)" stroke-width="2"/>
+                    <path d="M85 10 Q60 30 85 50 Q110 70 85 90 Q60 110 85 120" fill="none" stroke="rgba(165,180,252,.4)" stroke-width="2"/>
+                    <!-- Rungs connecting the helix -->
+                    <line x1="42" y1="18" x2="78" y2="18" stroke="rgba(255,255,255,.15)" stroke-width="1.5"/>
+                    <line x1="35" y1="30" x2="85" y2="30" stroke="rgba(255,255,255,.15)" stroke-width="1.5"/>
+                    <line x1="30" y1="42" x2="90" y2="42" stroke="rgba(255,255,255,.15)" stroke-width="1.5"/>
+                    <line x1="35" y1="55" x2="85" y2="55" stroke="rgba(255,255,255,.15)" stroke-width="1.5"/>
+                    <line x1="25" y1="68" x2="95" y2="68" stroke="rgba(255,255,255,.15)" stroke-width="1.5"/>
+                    <line x1="30" y1="80" x2="90" y2="80" stroke="rgba(255,255,255,.15)" stroke-width="1.5"/>
+                    <line x1="38" y1="93" x2="82" y2="93" stroke="rgba(255,255,255,.15)" stroke-width="1.5"/>
+                    <line x1="42" y1="105" x2="78" y2="105" stroke="rgba(255,255,255,.15)" stroke-width="1.5"/>
+                    <!-- Gene expression dots along helix - clustered colors -->
+                    <circle cx="42" cy="18" r="4" fill="#f43f5e"/>
+                    <circle cx="78" cy="18" r="4" fill="#fb923c"/>
+                    <circle cx="35" cy="30" r="4" fill="#f43f5e"/>
+                    <circle cx="85" cy="30" r="4" fill="#fb923c"/>
+                    <circle cx="30" cy="42" r="4" fill="#a78bfa"/>
+                    <circle cx="90" cy="42" r="4" fill="#22c55e"/>
+                    <circle cx="35" cy="55" r="4" fill="#a78bfa"/>
+                    <circle cx="85" cy="55" r="4" fill="#22c55e"/>
+                    <circle cx="25" cy="68" r="4" fill="#38bdf8"/>
+                    <circle cx="95" cy="68" r="4" fill="#38bdf8"/>
+                    <circle cx="30" cy="80" r="4" fill="#fbbf24"/>
+                    <circle cx="90" cy="80" r="4" fill="#fbbf24"/>
+                    <circle cx="38" cy="93" r="4" fill="#22c55e"/>
+                    <circle cx="82" cy="93" r="4" fill="#a78bfa"/>
+                    <circle cx="42" cy="105" r="4" fill="#f43f5e"/>
+                    <circle cx="78" cy="105" r="4" fill="#38bdf8"/>
+                </svg>
+                <h3>Analisis Gen</h3>
+                <p>Ekspresi gen dari ribuan sampel dipetakan untuk menemukan pola biologis.</p>
+            </div>
+
+            <!-- Card 4: Deteksi Fraud -->
+            <div class="glass-card rv d5">
+                <svg viewBox="0 0 120 120" style="width:100%;max-width:120px;">
+                    <!-- Connection lines -->
+                    <g stroke="rgba(255,255,255,.1)" stroke-width=".8">
+                        <line x1="60" y1="25" x2="30" y2="50"/>
+                        <line x1="60" y1="25" x2="90" y2="45"/>
+                        <line x1="30" y1="50" x2="50" y2="75"/>
+                        <line x1="30" y1="50" x2="20" y2="80"/>
+                        <line x1="90" y1="45" x2="95" y2="75"/>
+                        <line x1="90" y1="45" x2="70" y2="60"/>
+                        <line x1="50" y1="75" x2="70" y2="60"/>
+                        <line x1="50" y1="75" x2="40" y2="100"/>
+                        <line x1="70" y1="60" x2="95" y2="75"/>
+                        <line x1="95" y1="75" x2="80" y2="100"/>
+                        <line x1="20" y1="80" x2="40" y2="100"/>
+                        <line x1="40" y1="100" x2="60" y2="105"/>
+                        <line x1="60" y1="105" x2="80" y2="100"/>
+                    </g>
+                    <!-- Normal transaction nodes (green) -->
+                    <circle cx="60" cy="25" r="7" fill="rgba(34,197,94,.6)" stroke="rgba(34,197,94,.8)" stroke-width="1"/>
+                    <circle cx="30" cy="50" r="7" fill="rgba(34,197,94,.6)" stroke="rgba(34,197,94,.8)" stroke-width="1"/>
+                    <circle cx="50" cy="75" r="6" fill="rgba(34,197,94,.6)" stroke="rgba(34,197,94,.8)" stroke-width="1"/>
+                    <circle cx="20" cy="80" r="5" fill="rgba(34,197,94,.6)" stroke="rgba(34,197,94,.8)" stroke-width="1"/>
+                    <circle cx="40" cy="100" r="6" fill="rgba(34,197,94,.6)" stroke="rgba(34,197,94,.8)" stroke-width="1"/>
+                    <circle cx="60" cy="105" r="5" fill="rgba(34,197,94,.6)" stroke="rgba(34,197,94,.8)" stroke-width="1"/>
+                    <circle cx="80" cy="100" r="6" fill="rgba(34,197,94,.6)" stroke="rgba(34,197,94,.8)" stroke-width="1"/>
+                    <!-- Fraud nodes (red, pulsing) -->
+                    <circle cx="90" cy="45" r="8" fill="rgba(239,68,68,.15)" stroke="rgba(239,68,68,.6)" stroke-width="1.5">
+                        <animate attributeName="r" values="7;10;7" dur="2s" repeatCount="indefinite"/>
+                        <animate attributeName="opacity" values="1;.6;1" dur="2s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle cx="90" cy="45" r="4" fill="#ef4444"/>
+                    <circle cx="95" cy="75" r="8" fill="rgba(239,68,68,.15)" stroke="rgba(239,68,68,.6)" stroke-width="1.5">
+                        <animate attributeName="r" values="7;10;7" dur="2.3s" repeatCount="indefinite"/>
+                        <animate attributeName="opacity" values="1;.6;1" dur="2.3s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle cx="95" cy="75" r="4" fill="#ef4444"/>
+                    <circle cx="70" cy="60" r="8" fill="rgba(239,68,68,.15)" stroke="rgba(239,68,68,.6)" stroke-width="1.5">
+                        <animate attributeName="r" values="7;10;7" dur="1.8s" repeatCount="indefinite"/>
+                        <animate attributeName="opacity" values="1;.6;1" dur="1.8s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle cx="70" cy="60" r="4" fill="#ef4444"/>
+                    <!-- Labels -->
+                    <text x="16" y="115" font-size="6" fill="rgba(34,197,94,.7)" font-family="Plus Jakarta Sans" font-weight="600">Normal</text>
+                    <text x="82" y="115" font-size="6" fill="rgba(239,68,68,.8)" font-family="Plus Jakarta Sans" font-weight="600">Anomali</text>
+                </svg>
+                <h3>Deteksi Fraud</h3>
+                <p>Transaksi anomali terdeteksi sebagai outlier di peta SOM jaringan keuangan.</p>
+            </div>
+        </div>
     </div>
 </section>
 
