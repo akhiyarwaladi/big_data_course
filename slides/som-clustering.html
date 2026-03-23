@@ -1,0 +1,1748 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Self-Organizing Maps (SOM) — Materi Lengkap</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="slides-core.css">
+    <style>
+        :root {
+            --c1:#2563eb;--c2:#e11d48;--c3:#0d9488;--c4:#d97706;
+        }
+
+        /* === Slide A & B: Motivasi === */
+        .hero-mesh{position:absolute;inset:0;overflow:hidden;z-index:0}
+        .hero-mesh::before{content:'';position:absolute;inset:-40%;width:180%;height:180%;background:
+            radial-gradient(ellipse at 20% 30%,#1e3a5fcc 0%,transparent 55%),
+            radial-gradient(ellipse at 75% 60%,#0d9488aa 0%,transparent 50%),
+            radial-gradient(ellipse at 50% 80%,#6366f1aa 0%,transparent 50%),
+            radial-gradient(ellipse at 30% 70%,#1e293bdd 0%,transparent 60%);
+            animation:meshDrift 12s ease-in-out infinite alternate}
+        .hero-mesh::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,#0f172acc 0%,#1e293b99 40%,#0f172add 100%)}
+        @keyframes meshDrift{0%{transform:translate(0,0) rotate(0deg) scale(1)}50%{transform:translate(-3%,2%) rotate(1.5deg) scale(1.03)}100%{transform:translate(2%,-2%) rotate(-1deg) scale(1.01)}}
+
+        .hero-split{display:grid;grid-template-columns:1fr auto 1fr;gap:clamp(1rem,3vw,2.5rem);align-items:center;margin-top:clamp(.8rem,2vh,1.5rem)}
+        .hero-side{display:flex;flex-direction:column;align-items:center;gap:clamp(.5rem,1vh,.8rem)}
+        .hero-side-label{font-family:var(--font-d);font-size:var(--sm);font-weight:600;text-align:center;line-height:1.35;color:rgba(255,255,255,.75)}
+        .hero-arrow{font-size:clamp(2rem,4vw,3.5rem);color:rgba(255,255,255,.5);animation:pulseArrow 2s ease-in-out infinite}
+        @keyframes pulseArrow{0%,100%{opacity:.4;transform:translateX(0)}50%{opacity:1;transform:translateX(6px)}}
+
+        @keyframes chaosFloat{0%{transform:translate(0,0)}25%{transform:translate(3px,-4px)}50%{transform:translate(-2px,5px)}75%{transform:translate(4px,2px)}100%{transform:translate(0,0)}}
+        .chaos-el{animation:chaosFloat 4s ease-in-out infinite}
+        .chaos-el:nth-child(odd){animation-duration:3.2s;animation-direction:reverse}
+
+        @media(max-width:550px){.hero-split{grid-template-columns:1fr;gap:.8rem}.hero-arrow{transform:rotate(90deg)}}
+    </style>
+</head>
+<body>
+<div class="progress-bar" id="progressBar"></div>
+<nav class="nav-dots" id="navDots"></nav>
+<button class="fs-btn" id="fsBtn" title="Fullscreen (F)" onclick="toggleFS()">
+    <svg viewBox="0 0 24 24" id="fsIcon"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>
+</button>
+
+<!-- ===== 1: TITLE ===== -->
+<section class="slide" style="background:linear-gradient(135deg,#f0f0ff 0%,#fff 50%,#f0f4ff 100%);">
+    <div class="slide-content" style="align-items:center;text-align:center;">
+        <div class="rv" style="font-family:var(--font-m);font-size:var(--body);color:var(--text-muted);letter-spacing:.15em;text-transform:uppercase;margin-bottom:clamp(.5rem,1.5vh,1rem);">Materi Clustering</div>
+        <h1 class="rv d1">Self-Organizing Maps</h1>
+        <p class="rv d2" style="font-size:clamp(1.3rem,2.5vw,1.8rem);color:var(--text-muted);margin-top:clamp(.5rem,1vh,1rem);">Kohonen Maps — Jaringan Saraf Tiruan<br>untuk Clustering & Visualisasi Data</p>
+    </div>
+</section>
+
+<!-- ===== 1b: MENGAPA SOM — Hero Problem Statement ===== -->
+<section class="slide" style="--sc:var(--indigo);background:#0f172a;">
+    <div class="hero-mesh"></div>
+    <div class="slide-content" style="position:relative;z-index:1;">
+        <div class="sec rv" style="--sc:rgba(255,255,255,.45);color:rgba(255,255,255,.45);">00 — Motivasi</div>
+        <h2 class="rv d1" style="color:#fff;">Bagaimana Memetakan Kompleksitas ke Peta 2D?</h2>
+        <p class="rv d2" style="color:rgba(255,255,255,.55);font-size:var(--sm);margin-bottom:0;">Ditemukan 1982 oleh <strong style="color:#67e8f9;">Teuvo Kohonen</strong> — Digunakan di <strong style="color:#a5b4fc;">10.000+ Publikasi Ilmiah</strong></p>
+
+        <div class="hero-split rv d3">
+            <!-- Left: Chaotic high-dimensional data -->
+            <div class="hero-side">
+                <svg viewBox="0 0 200 180" style="width:100%;max-width:280px;">
+                    <!-- Tangled lines -->
+                    <g stroke="rgba(255,255,255,.18)" stroke-width="1" fill="none">
+                        <path class="chaos-el" d="M30 40 Q80 10 130 55 T180 30"/>
+                        <path class="chaos-el" d="M20 90 Q60 40 110 95 T170 70"/>
+                        <path class="chaos-el" d="M40 130 Q90 80 140 120 T190 100"/>
+                        <path class="chaos-el" d="M15 60 Q70 110 120 50 T185 120"/>
+                        <path class="chaos-el" d="M50 20 Q100 90 150 35 T180 140"/>
+                        <path class="chaos-el" d="M25 150 Q80 60 130 140 T175 55"/>
+                        <path class="chaos-el" d="M60 70 Q40 130 100 80 T160 110"/>
+                    </g>
+                    <!-- Chaotic overlapping circles -->
+                    <circle class="chaos-el" cx="55" cy="45" r="14" fill="rgba(99,102,241,.35)" stroke="rgba(99,102,241,.5)" stroke-width="1"/>
+                    <circle class="chaos-el" cx="90" cy="35" r="10" fill="rgba(37,99,235,.3)" stroke="rgba(37,99,235,.5)" stroke-width="1"/>
+                    <circle class="chaos-el" cx="75" cy="70" r="12" fill="rgba(217,119,6,.3)" stroke="rgba(217,119,6,.5)" stroke-width="1"/>
+                    <circle class="chaos-el" cx="130" cy="55" r="16" fill="rgba(225,29,72,.25)" stroke="rgba(225,29,72,.45)" stroke-width="1"/>
+                    <circle class="chaos-el" cx="110" cy="90" r="11" fill="rgba(13,148,136,.35)" stroke="rgba(13,148,136,.5)" stroke-width="1"/>
+                    <circle class="chaos-el" cx="45" cy="100" r="13" fill="rgba(124,58,237,.3)" stroke="rgba(124,58,237,.5)" stroke-width="1"/>
+                    <circle class="chaos-el" cx="150" cy="95" r="9" fill="rgba(37,99,235,.35)" stroke="rgba(37,99,235,.5)" stroke-width="1"/>
+                    <circle class="chaos-el" cx="70" cy="130" r="15" fill="rgba(99,102,241,.25)" stroke="rgba(99,102,241,.45)" stroke-width="1"/>
+                    <circle class="chaos-el" cx="120" cy="125" r="12" fill="rgba(225,29,72,.3)" stroke="rgba(225,29,72,.45)" stroke-width="1"/>
+                    <circle class="chaos-el" cx="160" cy="130" r="10" fill="rgba(13,148,136,.3)" stroke="rgba(13,148,136,.5)" stroke-width="1"/>
+                    <circle class="chaos-el" cx="95" cy="155" r="8" fill="rgba(217,119,6,.35)" stroke="rgba(217,119,6,.5)" stroke-width="1"/>
+                    <circle class="chaos-el" cx="40" cy="145" r="11" fill="rgba(37,99,235,.25)" stroke="rgba(37,99,235,.45)" stroke-width="1"/>
+                    <!-- Question mark -->
+                    <text x="100" y="105" text-anchor="middle" font-size="48" fill="rgba(255,255,255,.12)" font-weight="800" font-family="Plus Jakarta Sans">?</text>
+                </svg>
+                <div class="hero-side-label">Data Berdimensi Tinggi<br>Sulit divisualisasi langsung oleh manusia</div>
+            </div>
+
+            <!-- Arrow -->
+            <div class="hero-arrow rv d4">&#10132;</div>
+
+            <!-- Right: Organized SOM color grid -->
+            <div class="hero-side">
+                <svg viewBox="0 0 200 180" style="width:100%;max-width:280px;">
+                    <!-- 8x7 organized color grid -->
+                    <g>
+                        <!-- Row 0 -->
+                        <rect x="12" y="10" width="22" height="22" rx="3" fill="#1e3a8a" opacity=".9"/>
+                        <rect x="36" y="10" width="22" height="22" rx="3" fill="#1e40af" opacity=".9"/>
+                        <rect x="60" y="10" width="22" height="22" rx="3" fill="#2563eb" opacity=".9"/>
+                        <rect x="84" y="10" width="22" height="22" rx="3" fill="#3b82f6" opacity=".9"/>
+                        <rect x="108" y="10" width="22" height="22" rx="3" fill="#60a5fa" opacity=".9"/>
+                        <rect x="132" y="10" width="22" height="22" rx="3" fill="#7dd3fc" opacity=".9"/>
+                        <rect x="156" y="10" width="22" height="22" rx="3" fill="#a5f3fc" opacity=".9"/>
+                        <!-- Row 1 -->
+                        <rect x="12" y="34" width="22" height="22" rx="3" fill="#312e81" opacity=".9"/>
+                        <rect x="36" y="34" width="22" height="22" rx="3" fill="#3730a3" opacity=".9"/>
+                        <rect x="60" y="34" width="22" height="22" rx="3" fill="#4f46e5" opacity=".9"/>
+                        <rect x="84" y="34" width="22" height="22" rx="3" fill="#6366f1" opacity=".9"/>
+                        <rect x="108" y="34" width="22" height="22" rx="3" fill="#818cf8" opacity=".9"/>
+                        <rect x="132" y="34" width="22" height="22" rx="3" fill="#a5b4fc" opacity=".9"/>
+                        <rect x="156" y="34" width="22" height="22" rx="3" fill="#c4b5fd" opacity=".9"/>
+                        <!-- Row 2 -->
+                        <rect x="12" y="58" width="22" height="22" rx="3" fill="#581c87" opacity=".9"/>
+                        <rect x="36" y="58" width="22" height="22" rx="3" fill="#7e22ce" opacity=".9"/>
+                        <rect x="60" y="58" width="22" height="22" rx="3" fill="#9333ea" opacity=".9"/>
+                        <rect x="84" y="58" width="22" height="22" rx="3" fill="#a855f7" opacity=".9"/>
+                        <rect x="108" y="58" width="22" height="22" rx="3" fill="#c084fc" opacity=".9"/>
+                        <rect x="132" y="58" width="22" height="22" rx="3" fill="#d8b4fe" opacity=".9"/>
+                        <rect x="156" y="58" width="22" height="22" rx="3" fill="#e9d5ff" opacity=".9"/>
+                        <!-- Row 3 -->
+                        <rect x="12" y="82" width="22" height="22" rx="3" fill="#831843" opacity=".9"/>
+                        <rect x="36" y="82" width="22" height="22" rx="3" fill="#be185d" opacity=".9"/>
+                        <rect x="60" y="82" width="22" height="22" rx="3" fill="#e11d48" opacity=".9"/>
+                        <rect x="84" y="82" width="22" height="22" rx="3" fill="#f43f5e" opacity=".9"/>
+                        <rect x="108" y="82" width="22" height="22" rx="3" fill="#fb7185" opacity=".9"/>
+                        <rect x="132" y="82" width="22" height="22" rx="3" fill="#fda4af" opacity=".9"/>
+                        <rect x="156" y="82" width="22" height="22" rx="3" fill="#fecdd3" opacity=".9"/>
+                        <!-- Row 4 -->
+                        <rect x="12" y="106" width="22" height="22" rx="3" fill="#7c2d12" opacity=".9"/>
+                        <rect x="36" y="106" width="22" height="22" rx="3" fill="#c2410c" opacity=".9"/>
+                        <rect x="60" y="106" width="22" height="22" rx="3" fill="#ea580c" opacity=".9"/>
+                        <rect x="84" y="106" width="22" height="22" rx="3" fill="#f97316" opacity=".9"/>
+                        <rect x="108" y="106" width="22" height="22" rx="3" fill="#fb923c" opacity=".9"/>
+                        <rect x="132" y="106" width="22" height="22" rx="3" fill="#fdba74" opacity=".9"/>
+                        <rect x="156" y="106" width="22" height="22" rx="3" fill="#fed7aa" opacity=".9"/>
+                        <!-- Row 5 -->
+                        <rect x="12" y="130" width="22" height="22" rx="3" fill="#14532d" opacity=".9"/>
+                        <rect x="36" y="130" width="22" height="22" rx="3" fill="#166534" opacity=".9"/>
+                        <rect x="60" y="130" width="22" height="22" rx="3" fill="#16a34a" opacity=".9"/>
+                        <rect x="84" y="130" width="22" height="22" rx="3" fill="#22c55e" opacity=".9"/>
+                        <rect x="108" y="130" width="22" height="22" rx="3" fill="#4ade80" opacity=".9"/>
+                        <rect x="132" y="130" width="22" height="22" rx="3" fill="#86efac" opacity=".9"/>
+                        <rect x="156" y="130" width="22" height="22" rx="3" fill="#bbf7d0" opacity=".9"/>
+                        <!-- Row 6 -->
+                        <rect x="12" y="154" width="22" height="22" rx="3" fill="#134e4a" opacity=".9"/>
+                        <rect x="36" y="154" width="22" height="22" rx="3" fill="#115e59" opacity=".9"/>
+                        <rect x="60" y="154" width="22" height="22" rx="3" fill="#0d9488" opacity=".9"/>
+                        <rect x="84" y="154" width="22" height="22" rx="3" fill="#14b8a6" opacity=".9"/>
+                        <rect x="108" y="154" width="22" height="22" rx="3" fill="#2dd4bf" opacity=".9"/>
+                        <rect x="132" y="154" width="22" height="22" rx="3" fill="#5eead4" opacity=".9"/>
+                        <rect x="156" y="154" width="22" height="22" rx="3" fill="#99f6e4" opacity=".9"/>
+                    </g>
+                </svg>
+                <div class="hero-side-label">SOM Mengorganisir Sendiri!</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== 1c: SOM DI DUNIA NYATA ===== -->
+<section class="slide" style="--sc:var(--teal);background:#0f172a;">
+    <div class="hero-mesh"></div>
+    <div class="slide-content" style="position:relative;z-index:1;">
+        <div class="sec rv" style="--sc:rgba(255,255,255,.45);color:rgba(255,255,255,.45);">00 — Motivasi</div>
+        <h2 class="rv d1" style="color:#fff;">SOM di Dunia Nyata</h2>
+        <p class="rv d2" style="color:rgba(255,255,255,.5);margin-bottom:clamp(.6rem,1.5vh,1rem);">Dari warna hingga penipuan — SOM memetakan hal yang tak terlihat.</p>
+
+        <div class="four-col">
+            <!-- Card 1: Peta Warna -->
+            <div class="glass-card rv d2">
+                <svg viewBox="0 0 120 120" style="width:100%;max-width:120px;">
+                    <rect x="8" y="8" width="24" height="24" rx="4" fill="#dc2626"/>
+                    <rect x="34" y="8" width="24" height="24" rx="4" fill="#ea580c"/>
+                    <rect x="60" y="8" width="24" height="24" rx="4" fill="#f59e0b"/>
+                    <rect x="86" y="8" width="24" height="24" rx="4" fill="#eab308"/>
+                    <rect x="8" y="34" width="24" height="24" rx="4" fill="#e11d48"/>
+                    <rect x="34" y="34" width="24" height="24" rx="4" fill="#f97316"/>
+                    <rect x="60" y="34" width="24" height="24" rx="4" fill="#fbbf24"/>
+                    <rect x="86" y="34" width="24" height="24" rx="4" fill="#a3e635"/>
+                    <rect x="8" y="60" width="24" height="24" rx="4" fill="#be185d"/>
+                    <rect x="34" y="60" width="24" height="24" rx="4" fill="#c084fc"/>
+                    <rect x="60" y="60" width="24" height="24" rx="4" fill="#22c55e"/>
+                    <rect x="86" y="60" width="24" height="24" rx="4" fill="#4ade80"/>
+                    <rect x="8" y="86" width="24" height="24" rx="4" fill="#7c3aed"/>
+                    <rect x="34" y="86" width="24" height="24" rx="4" fill="#6366f1"/>
+                    <rect x="60" y="86" width="24" height="24" rx="4" fill="#0d9488"/>
+                    <rect x="86" y="86" width="24" height="24" rx="4" fill="#06b6d4"/>
+                </svg>
+                <h3>Peta Warna</h3>
+                <p>Ruang warna RGB diorganisir menjadi gradien 2D yang teratur otomatis.</p>
+            </div>
+
+            <!-- Card 2: Peta Musik -->
+            <div class="glass-card rv d3">
+                <svg viewBox="0 0 120 120" style="width:100%;max-width:120px;">
+                    <!-- Grid background -->
+                    <rect x="4" y="4" width="112" height="112" rx="8" fill="rgba(255,255,255,.05)" stroke="rgba(255,255,255,.1)" stroke-width=".5"/>
+                    <!-- Jazz region -->
+                    <rect x="8" y="8" width="50" height="50" rx="6" fill="rgba(99,102,241,.25)" stroke="rgba(99,102,241,.35)" stroke-width=".5"/>
+                    <text x="33" y="24" text-anchor="middle" font-size="16" fill="rgba(165,180,252,.8)">&#9835;</text>
+                    <text x="20" y="42" text-anchor="middle" font-size="12" fill="rgba(165,180,252,.8)">&#9834;</text>
+                    <text x="45" y="48" text-anchor="middle" font-size="10" fill="rgba(165,180,252,.6)">&#9836;</text>
+                    <text x="33" y="55" text-anchor="middle" font-size="7" fill="rgba(165,180,252,.9)" font-weight="600" font-family="Plus Jakarta Sans">Jazz</text>
+                    <!-- Rock region -->
+                    <rect x="62" y="8" width="50" height="50" rx="6" fill="rgba(225,29,72,.2)" stroke="rgba(225,29,72,.35)" stroke-width=".5"/>
+                    <text x="87" y="26" text-anchor="middle" font-size="18" fill="rgba(251,113,133,.8)">&#9835;</text>
+                    <text x="75" y="44" text-anchor="middle" font-size="14" fill="rgba(251,113,133,.7)">&#9834;</text>
+                    <text x="100" y="40" text-anchor="middle" font-size="10" fill="rgba(251,113,133,.6)">&#9836;</text>
+                    <text x="87" y="55" text-anchor="middle" font-size="7" fill="rgba(251,113,133,.9)" font-weight="600" font-family="Plus Jakarta Sans">Rock</text>
+                    <!-- Pop region -->
+                    <rect x="8" y="62" width="50" height="50" rx="6" fill="rgba(13,148,136,.2)" stroke="rgba(13,148,136,.35)" stroke-width=".5"/>
+                    <text x="33" y="80" text-anchor="middle" font-size="14" fill="rgba(94,234,212,.8)">&#9835;</text>
+                    <text x="22" y="96" text-anchor="middle" font-size="10" fill="rgba(94,234,212,.6)">&#9834;</text>
+                    <text x="46" y="100" text-anchor="middle" font-size="16" fill="rgba(94,234,212,.7)">&#9836;</text>
+                    <text x="33" y="109" text-anchor="middle" font-size="7" fill="rgba(94,234,212,.9)" font-weight="600" font-family="Plus Jakarta Sans">Pop</text>
+                    <!-- Classical region -->
+                    <rect x="62" y="62" width="50" height="50" rx="6" fill="rgba(217,119,6,.2)" stroke="rgba(217,119,6,.35)" stroke-width=".5"/>
+                    <text x="87" y="80" text-anchor="middle" font-size="12" fill="rgba(253,186,116,.8)">&#9835;</text>
+                    <text x="78" y="96" text-anchor="middle" font-size="16" fill="rgba(253,186,116,.7)">&#9834;</text>
+                    <text x="98" y="92" text-anchor="middle" font-size="10" fill="rgba(253,186,116,.6)">&#9836;</text>
+                    <text x="87" y="109" text-anchor="middle" font-size="7" fill="rgba(253,186,116,.9)" font-weight="600" font-family="Plus Jakarta Sans">Klasik</text>
+                </svg>
+                <h3>Peta Musik</h3>
+                <p>Lagu dikelompokkan berdasarkan fitur audio (tempo, frekuensi, energi) ke kluster genre otomatis.</p>
+            </div>
+
+            <!-- Card 3: Analisis Gen -->
+            <div class="glass-card rv d4">
+                <svg viewBox="0 0 120 120" style="width:100%;max-width:120px;">
+                    <!-- DNA helix backbone -->
+                    <path d="M35 10 Q60 30 35 50 Q10 70 35 90 Q60 110 35 120" fill="none" stroke="rgba(165,180,252,.4)" stroke-width="2"/>
+                    <path d="M85 10 Q60 30 85 50 Q110 70 85 90 Q60 110 85 120" fill="none" stroke="rgba(165,180,252,.4)" stroke-width="2"/>
+                    <!-- Rungs connecting the helix -->
+                    <line x1="42" y1="18" x2="78" y2="18" stroke="rgba(255,255,255,.15)" stroke-width="1.5"/>
+                    <line x1="35" y1="30" x2="85" y2="30" stroke="rgba(255,255,255,.15)" stroke-width="1.5"/>
+                    <line x1="30" y1="42" x2="90" y2="42" stroke="rgba(255,255,255,.15)" stroke-width="1.5"/>
+                    <line x1="35" y1="55" x2="85" y2="55" stroke="rgba(255,255,255,.15)" stroke-width="1.5"/>
+                    <line x1="25" y1="68" x2="95" y2="68" stroke="rgba(255,255,255,.15)" stroke-width="1.5"/>
+                    <line x1="30" y1="80" x2="90" y2="80" stroke="rgba(255,255,255,.15)" stroke-width="1.5"/>
+                    <line x1="38" y1="93" x2="82" y2="93" stroke="rgba(255,255,255,.15)" stroke-width="1.5"/>
+                    <line x1="42" y1="105" x2="78" y2="105" stroke="rgba(255,255,255,.15)" stroke-width="1.5"/>
+                    <!-- Gene expression dots along helix - clustered colors -->
+                    <circle cx="42" cy="18" r="4" fill="#f43f5e"/>
+                    <circle cx="78" cy="18" r="4" fill="#fb923c"/>
+                    <circle cx="35" cy="30" r="4" fill="#f43f5e"/>
+                    <circle cx="85" cy="30" r="4" fill="#fb923c"/>
+                    <circle cx="30" cy="42" r="4" fill="#a78bfa"/>
+                    <circle cx="90" cy="42" r="4" fill="#22c55e"/>
+                    <circle cx="35" cy="55" r="4" fill="#a78bfa"/>
+                    <circle cx="85" cy="55" r="4" fill="#22c55e"/>
+                    <circle cx="25" cy="68" r="4" fill="#38bdf8"/>
+                    <circle cx="95" cy="68" r="4" fill="#38bdf8"/>
+                    <circle cx="30" cy="80" r="4" fill="#fbbf24"/>
+                    <circle cx="90" cy="80" r="4" fill="#fbbf24"/>
+                    <circle cx="38" cy="93" r="4" fill="#22c55e"/>
+                    <circle cx="82" cy="93" r="4" fill="#a78bfa"/>
+                    <circle cx="42" cy="105" r="4" fill="#f43f5e"/>
+                    <circle cx="78" cy="105" r="4" fill="#38bdf8"/>
+                </svg>
+                <h3>Analisis Gen</h3>
+                <p>Ekspresi gen dari ribuan sampel dipetakan untuk menemukan pola biologis (kelompok gen yang berperilaku serupa).</p>
+            </div>
+
+            <!-- Card 4: Deteksi Fraud -->
+            <div class="glass-card rv d5">
+                <svg viewBox="0 0 120 120" style="width:100%;max-width:120px;">
+                    <!-- Connection lines -->
+                    <g stroke="rgba(255,255,255,.1)" stroke-width=".8">
+                        <line x1="60" y1="25" x2="30" y2="50"/>
+                        <line x1="60" y1="25" x2="90" y2="45"/>
+                        <line x1="30" y1="50" x2="50" y2="75"/>
+                        <line x1="30" y1="50" x2="20" y2="80"/>
+                        <line x1="90" y1="45" x2="95" y2="75"/>
+                        <line x1="90" y1="45" x2="70" y2="60"/>
+                        <line x1="50" y1="75" x2="70" y2="60"/>
+                        <line x1="50" y1="75" x2="40" y2="100"/>
+                        <line x1="70" y1="60" x2="95" y2="75"/>
+                        <line x1="95" y1="75" x2="80" y2="100"/>
+                        <line x1="20" y1="80" x2="40" y2="100"/>
+                        <line x1="40" y1="100" x2="60" y2="105"/>
+                        <line x1="60" y1="105" x2="80" y2="100"/>
+                    </g>
+                    <!-- Normal transaction nodes (green) -->
+                    <circle cx="60" cy="25" r="7" fill="rgba(34,197,94,.6)" stroke="rgba(34,197,94,.8)" stroke-width="1"/>
+                    <circle cx="30" cy="50" r="7" fill="rgba(34,197,94,.6)" stroke="rgba(34,197,94,.8)" stroke-width="1"/>
+                    <circle cx="50" cy="75" r="6" fill="rgba(34,197,94,.6)" stroke="rgba(34,197,94,.8)" stroke-width="1"/>
+                    <circle cx="20" cy="80" r="5" fill="rgba(34,197,94,.6)" stroke="rgba(34,197,94,.8)" stroke-width="1"/>
+                    <circle cx="40" cy="100" r="6" fill="rgba(34,197,94,.6)" stroke="rgba(34,197,94,.8)" stroke-width="1"/>
+                    <circle cx="60" cy="105" r="5" fill="rgba(34,197,94,.6)" stroke="rgba(34,197,94,.8)" stroke-width="1"/>
+                    <circle cx="80" cy="100" r="6" fill="rgba(34,197,94,.6)" stroke="rgba(34,197,94,.8)" stroke-width="1"/>
+                    <!-- Fraud nodes (red, pulsing) -->
+                    <circle cx="90" cy="45" r="8" fill="rgba(239,68,68,.15)" stroke="rgba(239,68,68,.6)" stroke-width="1.5">
+                        <animate attributeName="r" values="7;10;7" dur="2s" repeatCount="indefinite"/>
+                        <animate attributeName="opacity" values="1;.6;1" dur="2s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle cx="90" cy="45" r="4" fill="#ef4444"/>
+                    <circle cx="95" cy="75" r="8" fill="rgba(239,68,68,.15)" stroke="rgba(239,68,68,.6)" stroke-width="1.5">
+                        <animate attributeName="r" values="7;10;7" dur="2.3s" repeatCount="indefinite"/>
+                        <animate attributeName="opacity" values="1;.6;1" dur="2.3s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle cx="95" cy="75" r="4" fill="#ef4444"/>
+                    <circle cx="70" cy="60" r="8" fill="rgba(239,68,68,.15)" stroke="rgba(239,68,68,.6)" stroke-width="1.5">
+                        <animate attributeName="r" values="7;10;7" dur="1.8s" repeatCount="indefinite"/>
+                        <animate attributeName="opacity" values="1;.6;1" dur="1.8s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle cx="70" cy="60" r="4" fill="#ef4444"/>
+                    <!-- Labels -->
+                    <text x="16" y="115" font-size="6" fill="rgba(34,197,94,.7)" font-family="Plus Jakarta Sans" font-weight="600">Normal</text>
+                    <text x="82" y="115" font-size="6" fill="rgba(239,68,68,.8)" font-family="Plus Jakarta Sans" font-weight="600">Anomali</text>
+                </svg>
+                <h3>Deteksi Fraud</h3>
+                <p>Transaksi anomali terdeteksi sebagai outlier di peta SOM jaringan keuangan.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== 2: APA ITU SOM ===== -->
+<section class="slide" style="--sc:var(--indigo)">
+    <div class="slide-content">
+        <div class="sec rv">01 — Pengenalan</div>
+        <h2 class="rv d1">Apa itu Self-Organizing Map?</h2>
+        <div class="two-col viz">
+            <div>
+                <p class="rv d2" style="margin-bottom:.6em;">SOM adalah jaringan saraf tiruan (neural network) yang menggunakan <strong>competitive learning</strong> (pembelajaran kompetitif: neuron-neuron 'berlomba' — yang paling mirip dengan input menjadi pemenang) untuk memetakan data berdimensi tinggi ke dalam peta 2D, sambil mempertahankan hubungan kedekatan antar data (data yang mirip di ruang asli tetap berdekatan di peta). Ditemukan oleh <strong>Teuvo Kohonen</strong> (1982), seorang ilmuwan komputer dari Finlandia.</p>
+                <div class="card accent rv d3">
+                    <h3>Prinsip Utama</h3>
+                    <ul class="blist">
+                        <li>Data <strong>serupa</strong> dipetakan ke posisi <strong>berdekatan</strong> pada peta</li>
+                        <li>Mengurangi dimensi sambil menjaga <strong>struktur topologi</strong></li>
+                        <li>Tidak membutuhkan label — <strong>unsupervised learning</strong></li>
+                        <li>Hasil berupa <strong>peta visual</strong> yang mudah diinterpretasi</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="rv d3" style="display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 320 240" style="width:100%;background:var(--bg-alt);border:1px solid var(--border);border-radius:14px;">
+                    <text x="160" y="22" text-anchor="middle" font-size="12" fill="var(--text-muted)" font-weight="600">Analogi: Kain Elastis Menutupi Data</text>
+                    <!-- Data cloud -->
+                    <circle cx="60" cy="62" r="5" fill="var(--indigo)" opacity=".3"/><circle cx="95" cy="58" r="5" fill="var(--indigo)" opacity=".3"/>
+                    <circle cx="55" cy="90" r="5" fill="var(--indigo)" opacity=".3"/><circle cx="105" cy="95" r="5" fill="var(--indigo)" opacity=".3"/>
+                    <circle cx="70" cy="105" r="5" fill="var(--indigo)" opacity=".3"/>
+                    <circle cx="220" cy="140" r="5" fill="var(--rose)" opacity=".3"/><circle cx="240" cy="130" r="5" fill="var(--rose)" opacity=".3"/>
+                    <circle cx="228" cy="158" r="5" fill="var(--rose)" opacity=".3"/><circle cx="256" cy="148" r="5" fill="var(--rose)" opacity=".3"/>
+                    <circle cx="148" cy="170" r="5" fill="var(--teal)" opacity=".3"/><circle cx="138" cy="188" r="5" fill="var(--teal)" opacity=".3"/>
+                    <circle cx="178" cy="184" r="5" fill="var(--teal)" opacity=".3"/>
+                    <!-- Grid/elastic sheet stretched over data -->
+                    <g stroke="var(--indigo)" stroke-width="1.5" opacity=".6">
+                        <line x1="75" y1="75" x2="140" y2="75"/><line x1="140" y1="75" x2="230" y2="135"/>
+                        <line x1="75" y1="75" x2="85" y2="130"/><line x1="140" y1="75" x2="155" y2="135"/>
+                        <line x1="85" y1="130" x2="155" y2="135"/><line x1="155" y1="135" x2="230" y2="135"/>
+                        <line x1="85" y1="130" x2="100" y2="180"/><line x1="155" y1="135" x2="165" y2="178"/>
+                        <line x1="230" y1="135" x2="242" y2="150"/>
+                        <line x1="100" y1="180" x2="165" y2="178"/>
+                    </g>
+                    <!-- Grid nodes -->
+                    <circle cx="75" cy="75" r="6" fill="var(--indigo)"/><circle cx="140" cy="75" r="6" fill="var(--indigo)"/>
+                    <circle cx="230" cy="135" r="6" fill="var(--indigo)"/><circle cx="85" cy="130" r="6" fill="var(--indigo)"/>
+                    <circle cx="155" cy="135" r="6" fill="var(--indigo)"/><circle cx="100" cy="180" r="6" fill="var(--indigo)"/>
+                    <circle cx="165" cy="178" r="6" fill="var(--indigo)"/><circle cx="242" cy="150" r="6" fill="var(--indigo)"/>
+                    <text x="160" y="222" text-anchor="middle" font-size="13" fill="var(--text-sub)" font-family="Plus Jakarta Sans">"Kain elastis meregang menutupi data"</text>
+                </svg>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== 3: ARSITEKTUR ===== -->
+<section class="slide" style="--sc:var(--teal)">
+    <div class="slide-content">
+        <div class="sec rv">02 — Arsitektur</div>
+        <h2 class="rv d1">Struktur Jaringan SOM</h2>
+        <div class="two-col viz">
+            <div>
+                <div class="card accent rv d2" style="margin-bottom:.6em;">
+                    <h3>Komponen Utama</h3>
+                    <ul class="blist">
+                        <li><strong>Input layer:</strong> menerima data berdimensi-n</li>
+                        <li><strong>Output layer:</strong> grid 2D berisi neuron-neuron</li>
+                        <li>Setiap neuron memiliki <strong>vektor bobot</strong> w berdimensi sama dengan data input (vektor ini mewakili 'posisi' neuron di ruang data)</li>
+                        <li>Neuron terhubung dengan <strong>tetangganya</strong> di grid</li>
+                    </ul>
+                </div>
+                <div class="card accent rv d3">
+                    <h3>Tipe Grid</h3>
+                    <ul class="blist">
+                        <li><strong>Rectangular:</strong> 4 tetangga per neuron, lebih sederhana</li>
+                        <li><strong>Hexagonal:</strong> 6 tetangga per neuron, lebih merata dan umum digunakan. Grid hexagonal lebih umum karena jarak antar tetangga lebih seragam</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="rv d3" style="display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 340 240" style="width:100%;background:var(--bg-alt);border:1px solid var(--border);border-radius:14px;">
+                    <!-- Input layer -->
+                    <text x="80" y="22" text-anchor="middle" font-size="12" fill="var(--text-muted)" font-weight="600">Input Layer</text>
+                    <rect x="40" y="30" width="80" height="30" rx="6" fill="var(--teal)" opacity=".15" stroke="var(--teal)" stroke-width="1"/>
+                    <text x="80" y="50" text-anchor="middle" font-size="11" fill="var(--teal)" font-weight="600" font-family="Fira Code">x = [x₁, x₂, ..., xₙ]</text>
+                    <!-- Arrows -->
+                    <line x1="80" y1="62" x2="80" y2="78" stroke="var(--text-muted)" stroke-width="1.5" marker-end="url(#arr)"/>
+                    <line x1="80" y1="62" x2="170" y2="78" stroke="var(--text-muted)" stroke-width="1" opacity=".4"/>
+                    <line x1="80" y1="62" x2="260" y2="78" stroke="var(--text-muted)" stroke-width="1" opacity=".3"/>
+                    <defs><marker id="arr" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--text-muted)"/></marker></defs>
+                    <!-- Output layer — rectangular grid 4x3 -->
+                    <text x="170" y="88" text-anchor="middle" font-size="12" fill="var(--text-muted)" font-weight="600">Output Layer (Grid 2D)</text>
+                    <g>
+                        <!-- Horizontal lines -->
+                        <line x1="60" y1="110" x2="280" y2="110" stroke="var(--border)" stroke-width="1.5"/>
+                        <line x1="60" y1="150" x2="280" y2="150" stroke="var(--border)" stroke-width="1.5"/>
+                        <line x1="60" y1="190" x2="280" y2="190" stroke="var(--border)" stroke-width="1.5"/>
+                        <!-- Vertical lines -->
+                        <line x1="60" y1="110" x2="60" y2="190" stroke="var(--border)" stroke-width="1.5"/>
+                        <line x1="133" y1="110" x2="133" y2="190" stroke="var(--border)" stroke-width="1.5"/>
+                        <line x1="206" y1="110" x2="206" y2="190" stroke="var(--border)" stroke-width="1.5"/>
+                        <line x1="280" y1="110" x2="280" y2="190" stroke="var(--border)" stroke-width="1.5"/>
+                        <!-- Neurons -->
+                        <circle cx="60" cy="110" r="8" fill="var(--indigo)"/><circle cx="133" cy="110" r="8" fill="var(--indigo)"/>
+                        <circle cx="206" cy="110" r="8" fill="var(--indigo)"/><circle cx="280" cy="110" r="8" fill="var(--indigo)"/>
+                        <circle cx="60" cy="150" r="8" fill="var(--indigo)"/><circle cx="133" cy="150" r="10" fill="var(--amber)" stroke="var(--accent)" stroke-width="2.5"/>
+                        <circle cx="206" cy="150" r="8" fill="var(--indigo)"/><circle cx="280" cy="150" r="8" fill="var(--indigo)"/>
+                        <circle cx="60" cy="190" r="8" fill="var(--indigo)"/><circle cx="133" cy="190" r="8" fill="var(--indigo)"/>
+                        <circle cx="206" cy="190" r="8" fill="var(--indigo)"/><circle cx="280" cy="190" r="8" fill="var(--indigo)"/>
+                    </g>
+                    <text x="133" y="130" text-anchor="middle" font-size="10" fill="var(--amber)" font-weight="700">BMU</text>
+                    <!-- Weight vector label -->
+                    <text x="170" y="222" text-anchor="middle" font-size="11" fill="var(--text-sub)">Setiap neuron menyimpan vektor bobot w = [w₁, w₂, ..., wₙ]</text>
+                </svg>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== 4: KONSEP BMU ===== -->
+<section class="slide" style="--sc:var(--teal)">
+    <div class="slide-content">
+        <div class="sec rv">02 — Arsitektur</div>
+        <h2 class="rv d1">Best Matching Unit (BMU)</h2>
+        <div class="two-col viz">
+            <div>
+                <p class="rv d2" style="margin-bottom:.5em;">Ketika sebuah data input masuk, SOM menghitung jarak antara input dengan <strong>semua vektor bobot</strong> di grid. Neuron yang vektor bobotnya <strong>paling mirip</strong> (jarak terkecil) dengan input disebut <strong>Best Matching Unit (BMU)</strong>.</p>
+                <div class="formula rv d3" style="margin-bottom:.5em;">BMU = argmin<sub>j</sub> || x − w<sub>j</sub> ||</div>
+                <p class="rv d3" style="font-size:var(--sm);color:var(--text-sub);margin-top:.2em;margin-bottom:.5em;">argmin berarti: pilih neuron j yang menghasilkan jarak terkecil ke input x.</p>
+                <div class="card accent rv d4">
+                    <h3>Neighborhood Function</h3>
+                    <p style="margin-top:.2em;">Setelah BMU ditemukan, BMU dan <strong>tetangga-tetangganya</strong> di grid akan di-update. Fungsi neighborhood menentukan seberapa besar tetangga BMU ikut belajar — semakin jauh dari BMU, semakin kecil update-nya. Fungsi neighborhood yang umum digunakan adalah <strong>Gaussian</strong>.</p>
+                </div>
+            </div>
+            <div class="rv d3" style="display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 300 256" style="width:100%;background:var(--bg-alt);border:1px solid var(--border);border-radius:14px;">
+                    <text x="150" y="20" text-anchor="middle" font-size="12" fill="var(--text-muted)" font-weight="600">Mencari BMU & Neighborhood</text>
+                    <!-- Neighborhood rings -->
+                    <circle cx="150" cy="130" r="90" fill="rgba(99,102,241,.03)" stroke="var(--indigo)" stroke-width="1" stroke-dasharray="4 3" opacity=".4"/>
+                    <circle cx="150" cy="130" r="55" fill="rgba(99,102,241,.06)" stroke="var(--indigo)" stroke-width="1" stroke-dasharray="4 3" opacity=".6"/>
+                    <!-- Grid 4x4 -->
+                    <circle cx="90" cy="70" r="7" fill="var(--indigo)" opacity=".3"/><circle cx="150" cy="70" r="7" fill="var(--indigo)" opacity=".5"/>
+                    <circle cx="210" cy="70" r="7" fill="var(--indigo)" opacity=".3"/>
+                    <circle cx="90" cy="130" r="7" fill="var(--indigo)" opacity=".5"/><circle cx="150" cy="130" r="12" fill="var(--amber)"/>
+                    <circle cx="210" cy="130" r="7" fill="var(--indigo)" opacity=".5"/>
+                    <circle cx="90" cy="190" r="7" fill="var(--indigo)" opacity=".3"/><circle cx="150" cy="190" r="7" fill="var(--indigo)" opacity=".5"/>
+                    <circle cx="210" cy="190" r="7" fill="var(--indigo)" opacity=".3"/>
+                    <!-- BMU label -->
+                    <text x="150" y="135" text-anchor="middle" font-size="10" fill="#fff" font-weight="700">BMU</text>
+                    <!-- Radius labels -->
+                    <text x="215" y="95" font-size="10" fill="var(--indigo)" opacity=".6">σ (radius)</text>
+                    <text x="245" y="125" font-size="9" fill="var(--indigo)" opacity=".4" text-anchor="end">pengaruh kecil</text>
+                    <!-- Input arrow -->
+                    <line x1="30" y1="40" x2="143" y2="122" stroke="var(--amber)" stroke-width="2" stroke-dasharray="5 3"/>
+                    <rect x="15" y="28" width="50" height="22" rx="6" fill="var(--amber)" opacity=".15" stroke="var(--amber)" stroke-width="1"/>
+                    <text x="40" y="43" text-anchor="middle" font-size="11" fill="var(--amber)" font-weight="600">Input x</text>
+                    <!-- Legend -->
+                    <text x="150" y="238" text-anchor="middle" font-size="11" fill="var(--text-sub)">Update terbesar di BMU, semakin kecil menjauh</text>
+                </svg>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== 5: ALGORITMA ===== -->
+<section class="slide" style="--sc:var(--indigo)">
+    <div class="slide-content">
+        <div class="sec rv">03 — Algoritma</div>
+        <h2 class="rv d1">Langkah-Langkah Algoritma SOM</h2>
+        <div class="steps">
+            <div class="step rv d2"><div class="step-n">1</div><p><strong>Inisialisasi:</strong> Tetapkan vektor bobot setiap neuron di grid secara acak atau menggunakan PCA dari data input.</p></div>
+            <div class="step rv d3"><div class="step-n">2</div><p><strong>Kompetisi:</strong> Pilih satu data input secara acak, lalu hitung jarak Euclidean ke semua neuron. Neuron dengan jarak terkecil menjadi <strong>BMU</strong> (pemenang).</p></div>
+            <div class="step rv d4"><div class="step-n">3</div><p><strong>Kooperasi:</strong> Tentukan tetangga BMU di grid menggunakan fungsi Gaussian. Neuron yang lebih dekat ke BMU mendapat pengaruh lebih besar.</p></div>
+            <div class="step rv d5"><div class="step-n">4</div><p><strong>Adaptasi:</strong> Update vektor bobot BMU dan tetangganya agar <strong>lebih mendekati</strong> input: &nbsp; w<sub>j</sub>(t+1) = w<sub>j</sub>(t) + α(t) · h(j,BMU,t) · (x − w<sub>j</sub>(t)). Formula ini menggeser bobot neuron mendekati input x. Besarnya pergeseran dikontrol oleh learning rate α dan jarak di grid h.</p></div>
+            <div class="step rv d6"><div class="step-n">5</div><p><strong>Ulangi:</strong> Kurangi learning rate (α) dan radius neighborhood (σ) secara bertahap. Pengurangan ini penting agar SOM stabil — awalnya belajar cepat (eksplorasi), lalu semakin halus (fine-tuning). Ulangi langkah 2-4 untuk ribuan iterasi hingga peta stabil.</p></div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== 6: RUMUS ===== -->
+<section class="slide" style="--sc:var(--indigo)">
+    <div class="slide-content">
+        <div class="sec rv">03 — Algoritma</div>
+        <h2 class="rv d1">Rumus Matematis SOM</h2>
+        <div class="two-col viz">
+            <div>
+                <div class="card accent rv d2" style="margin-bottom:.5em;">
+                    <h3>Weight Update</h3>
+                    <div class="formula" style="margin-top:.3em;font-size:var(--sm);">w<sub>j</sub>(t+1) = w<sub>j</sub>(t) + α(t) · h(j, BMU, t) · [x(t) − w<sub>j</sub>(t)]</div>
+                </div>
+                <div class="card accent rv d3" style="margin-bottom:.5em;">
+                    <h3>Gaussian Neighborhood</h3>
+                    <div class="formula" style="margin-top:.3em;font-size:var(--sm);">h(j, BMU, t) = exp(−||r<sub>j</sub> − r<sub>BMU</sub>||² / 2σ(t)²)</div>
+                </div>
+                <div class="card accent rv d4">
+                    <h3>Parameter Decay</h3>
+                    <div class="formula" style="margin-top:.3em;font-size:var(--sm);">α(t) = α₀ · exp(−t / τ<sub>α</sub>)</div>
+                    <div class="formula" style="margin-top:.3em;font-size:var(--sm);">σ(t) = σ₀ · exp(−t / τ<sub>σ</sub>)</div>
+                    <p style="margin-top:.4em;font-size:var(--sm);color:var(--text-sub);">τ (tau) adalah konstanta waktu yang mengontrol seberapa cepat parameter menurun. Semakin besar τ, semakin lambat penurunannya.</p>
+                </div>
+            </div>
+            <div class="rv d3" style="display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 300 220" style="width:100%;background:var(--bg-alt);border:1px solid var(--border);border-radius:14px;">
+                    <text x="150" y="20" text-anchor="middle" font-size="12" fill="var(--text-muted)" font-weight="600">Decay Learning Rate & Radius</text>
+                    <!-- Axes -->
+                    <line x1="40" y1="190" x2="280" y2="190" stroke="var(--text-muted)" stroke-width="1.5"/>
+                    <line x1="40" y1="30" x2="40" y2="190" stroke="var(--text-muted)" stroke-width="1.5"/>
+                    <text x="160" y="210" text-anchor="middle" font-size="11" fill="var(--text-muted)">Iterasi (t)</text>
+                    <text x="18" y="110" font-size="11" fill="var(--text-muted)" transform="rotate(-90 18 110)">Nilai</text>
+                    <!-- Learning rate curve -->
+                    <path d="M 40 55 Q 80 60, 120 95 T 200 160 Q 240 175, 275 182" fill="none" stroke="var(--indigo)" stroke-width="2.5"/>
+                    <text x="130" y="72" font-size="11" fill="var(--indigo)" font-weight="600">α (learning rate)</text>
+                    <!-- Radius curve -->
+                    <path d="M 40 35 Q 70 40, 100 70 T 180 140 Q 230 165, 275 178" fill="none" stroke="var(--amber)" stroke-width="2.5" stroke-dasharray="6 3"/>
+                    <text x="85" y="42" font-size="11" fill="var(--amber)" font-weight="600">σ (radius)</text>
+                    <!-- Annotations -->
+                    <text x="255" y="170" font-size="9" fill="var(--text-muted)">kecil</text>
+                    <text x="48" y="30" font-size="9" fill="var(--text-muted)">besar</text>
+                </svg>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== 7: CONTOH DATASET ===== -->
+<section class="slide" style="--sc:var(--amber)">
+    <div class="slide-content">
+        <div class="sec rv">04 — Perhitungan Manual</div>
+        <h2 class="rv d1">Contoh: Grid 2×2 dengan Data 2D</h2>
+        <div class="two-col viz">
+            <div>
+                <p class="rv d2" style="margin-bottom:.4em;">Kita gunakan grid <strong>2×2</strong> (4 neuron) dengan data input 2 dimensi. Parameter: <strong>α = 0.5</strong>, <strong>σ = 0.6</strong></p>
+                <table class="dtable rv d3" style="margin-bottom:.5em;">
+                    <thead><tr><th>Neuron</th><th>Posisi Grid</th><th>Bobot Awal (w₁, w₂)</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>N1</strong></td><td>(0, 0)</td><td>(0.45, 0.89)</td></tr>
+                        <tr><td><strong>N2</strong></td><td>(1, 0)</td><td>(0.55, 0.83)</td></tr>
+                        <tr><td><strong>N3</strong></td><td>(0, 1)</td><td>(0.95, 0.32)</td></tr>
+                        <tr><td><strong>N4</strong></td><td>(1, 1)</td><td>(0.62, 0.78)</td></tr>
+                    </tbody>
+                </table>
+                <div class="formula rv d4">Input: x = (3.0, 1.0)</div>
+            </div>
+            <div class="rv d3" style="display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 320 258" style="width:100%;background:var(--bg-alt);border:1px solid var(--border);border-radius:14px;">
+                    <text x="160" y="20" text-anchor="middle" font-size="12" fill="var(--text-muted)" font-weight="600">Posisi Bobot di Ruang Data</text>
+                    <!-- Axes -->
+                    <line x1="40" y1="210" x2="300" y2="210" stroke="var(--text-muted)" stroke-width="1"/>
+                    <line x1="40" y1="20" x2="40" y2="210" stroke="var(--text-muted)" stroke-width="1"/>
+                    <text x="170" y="232" text-anchor="middle" font-size="11" fill="var(--text-muted)">w₁</text>
+                    <text x="22" y="115" font-size="11" fill="var(--text-muted)" transform="rotate(-90 22 115)">w₂</text>
+                    <!-- Scale: x = 40 + val*80, y = 210 - val*180. Spread out for clarity -->
+                    <!-- N1 (0.45, 0.89) — positioned at top-left area -->
+                    <circle cx="68" cy="45" r="10" fill="var(--indigo)"/><text x="68" y="28" text-anchor="middle" font-size="13" fill="var(--indigo)" font-weight="700">N1</text>
+                    <!-- N2 (0.55, 0.83) — offset to the right -->
+                    <circle cx="110" cy="55" r="10" fill="var(--indigo)"/><text x="128" y="50" font-size="13" fill="var(--indigo)" font-weight="700">N2</text>
+                    <!-- N3 (0.95, 0.32) — bottom area -->
+                    <circle cx="130" cy="152" r="10" fill="var(--indigo)"/><text x="130" y="172" text-anchor="middle" font-size="13" fill="var(--indigo)" font-weight="700">N3</text>
+                    <!-- N4 (0.62, 0.78) — between N2 and N3 -->
+                    <circle cx="90" cy="90" r="10" fill="var(--indigo)"/><text x="108" y="96" font-size="13" fill="var(--indigo)" font-weight="700">N4</text>
+                    <!-- Input x=(3,1) → x=280, y=30 -->
+                    <circle cx="275" cy="35" r="12" fill="var(--amber)"/><text x="275" y="40" text-anchor="middle" font-size="11" fill="#fff" font-weight="700">x</text>
+                    <text x="255" y="25" text-anchor="end" font-size="11" fill="var(--amber)" font-weight="600">(3, 1)</text>
+                    <!-- Distance lines to x -->
+                    <line x1="130" y1="152" x2="275" y2="35" stroke="var(--teal)" stroke-width="1.5" stroke-dasharray="4 3"/>
+                    <text x="215" y="100" font-size="10" fill="var(--teal)" font-weight="600" transform="rotate(-35 215 100)">d = 2.160 (terkecil!)</text>
+                </svg>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== 8: CARI BMU ===== -->
+<section class="slide" style="--sc:var(--amber)">
+    <div class="slide-content">
+        <div class="sec rv">04 — Perhitungan Manual</div>
+        <h2 class="rv d1">Langkah 1: Cari BMU</h2>
+        <div class="two-col viz">
+            <div>
+                <p class="rv d2" style="margin-bottom:.4em;">Hitung jarak Euclidean dari input <strong>x = (3, 1)</strong> ke setiap neuron:</p>
+                <div class="card accent rv d3">
+                    <div class="calc">d(x, N1) = √[(3−0.45)² + (1−0.89)²]</div>
+                    <div class="calc">= √[6.50 + 0.01] = <strong>2.552</strong></div>
+                    <div class="calc" style="margin-top:.3em;">d(x, N2) = √[(3−0.55)² + (1−0.83)²]</div>
+                    <div class="calc">= √[6.00 + 0.03] = <strong>2.456</strong></div>
+                    <div class="calc" style="margin-top:.3em;">d(x, N3) = √[(3−0.95)² + (1−0.32)²]</div>
+                    <div class="calc">= √[4.20 + 0.46] = <span class="ok"><strong>2.160</strong> ← terkecil!</span></div>
+                    <div class="calc" style="margin-top:.3em;">d(x, N4) = √[(3−0.62)² + (1−0.78)²]</div>
+                    <div class="calc">= √[5.66 + 0.05] = <strong>2.390</strong></div>
+                </div>
+                <div class="state-box rv d4" style="margin-top:.5em;"><span><span class="label">BMU:</span> <span class="val">N3 (jarak 2.160)</span></span></div>
+            </div>
+            <div class="rv d3" style="display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 260 220" style="width:100%;background:var(--bg-alt);border:1px solid var(--border);border-radius:14px;">
+                    <text x="130" y="20" text-anchor="middle" font-size="12" fill="var(--text-muted)" font-weight="600">Grid 2×2 — N3 adalah BMU</text>
+                    <!-- Grid lines -->
+                    <line x1="80" y1="65" x2="185" y2="65" stroke="var(--border)" stroke-width="2"/>
+                    <line x1="80" y1="145" x2="185" y2="145" stroke="var(--border)" stroke-width="2"/>
+                    <line x1="80" y1="65" x2="80" y2="145" stroke="var(--border)" stroke-width="2"/>
+                    <line x1="185" y1="65" x2="185" y2="145" stroke="var(--border)" stroke-width="2"/>
+                    <!-- N1 -->
+                    <circle cx="80" cy="65" r="14" fill="var(--indigo)" opacity=".4"/><text x="80" y="70" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">N1</text>
+                    <text x="80" y="47" text-anchor="middle" font-size="10" fill="var(--text-muted)">d=2.552</text>
+                    <!-- N2 -->
+                    <circle cx="185" cy="65" r="14" fill="var(--indigo)" opacity=".4"/><text x="185" y="70" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">N2</text>
+                    <text x="185" y="47" text-anchor="middle" font-size="10" fill="var(--text-muted)">d=2.456</text>
+                    <!-- N3 = BMU -->
+                    <circle cx="80" cy="145" r="16" fill="var(--amber)"/><circle cx="80" cy="145" r="22" fill="none" stroke="var(--accent)" stroke-width="3"/>
+                    <text x="80" y="150" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">N3</text>
+                    <text x="80" y="180" text-anchor="middle" font-size="11" fill="var(--amber)" font-weight="700">BMU! d=2.160</text>
+                    <!-- N4 -->
+                    <circle cx="185" cy="145" r="14" fill="var(--indigo)" opacity=".4"/><text x="185" y="150" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">N4</text>
+                    <text x="185" y="172" text-anchor="middle" font-size="10" fill="var(--text-muted)">d=2.390</text>
+                    <!-- Grid labels -->
+                    <text x="45" y="68" font-size="10" fill="var(--text-muted)">(0,0)</text>
+                    <text x="202" y="68" font-size="10" fill="var(--text-muted)">(1,0)</text>
+                    <text x="45" y="148" font-size="10" fill="var(--text-muted)">(0,1)</text>
+                    <text x="202" y="148" font-size="10" fill="var(--text-muted)">(1,1)</text>
+                </svg>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== 9: UPDATE BOBOT ===== -->
+<section class="slide" style="--sc:var(--amber)">
+    <div class="slide-content">
+        <div class="sec rv">04 — Perhitungan Manual</div>
+        <h2 class="rv d1">Langkah 2: Hitung Neighborhood & Update Bobot</h2>
+        <div class="two-col viz">
+            <div>
+                <p class="rv d2" style="margin-bottom:.3em;">Hitung nilai Gaussian neighborhood h(j, BMU) dengan σ = 0.6, lalu update setiap bobot:</p>
+                <div class="card accent rv d3" style="margin-bottom:.4em;">
+                    <h3>Neighborhood Values</h3>
+                    <div class="calc">h(N3,N3) = exp(0) = <strong>1.000</strong> (BMU sendiri)</div>
+                    <div class="calc">h(N1,N3) = exp(−1.0/0.72) = <strong>0.249</strong></div>
+                    <div class="calc">h(N4,N3) = exp(−1.0/0.72) = <strong>0.249</strong></div>
+                    <div class="calc">h(N2,N3) = exp(−2.0/0.72) = <strong>0.062</strong></div>
+                </div>
+                <div class="card accent rv d4">
+                    <h3>Update BMU (N3)</h3>
+                    <div class="calc">w₃ = (0.95, 0.32) + 0.5 × 1.0 × (x − w₃)</div>
+                    <div class="calc" style="color:var(--text-sub);">(x − w₃) = (3.0 − 0.95, 1.0 − 0.32) = (2.05, 0.68)</div>
+                    <div class="calc">= (0.95, 0.32) + 0.5 × 1.0 × (2.05, 0.68)</div>
+                    <div class="calc">= <span class="ok"><strong>(1.975, 0.66)</strong></span></div>
+                    <p style="margin-top:.3em;font-size:var(--sm);">N3 bergerak paling banyak mendekati input. Neuron lain juga bergerak, tetapi lebih sedikit sesuai nilai h.</p>
+                    <p style="margin-top:.2em;font-size:var(--sm);color:var(--text-sub);">Arti nilai h: h = 1.0 berarti neuron ini mendapat 100% dari update (BMU), h = 0.249 berarti hanya 24.9% update.</p>
+                </div>
+            </div>
+            <div class="rv d3" style="display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 280 230" style="width:100%;background:var(--bg-alt);border:1px solid var(--border);border-radius:14px;">
+                    <text x="140" y="20" text-anchor="middle" font-size="12" fill="var(--text-muted)" font-weight="600">Bobot Sebelum & Sesudah Update</text>
+                    <!-- Axes -->
+                    <line x1="35" y1="200" x2="265" y2="200" stroke="var(--text-muted)" stroke-width="1"/>
+                    <line x1="35" y1="25" x2="35" y2="200" stroke="var(--text-muted)" stroke-width="1"/>
+                    <text x="150" y="220" text-anchor="middle" font-size="10" fill="var(--text-muted)">w₁</text>
+                    <text x="18" y="112" font-size="10" fill="var(--text-muted)" transform="rotate(-90 18 112)">w₂</text>
+                    <!-- Scale: x = 35 + val*70, y = 200 - val*170 -->
+                    <!-- N3 old (0.95, 0.32) → x=102, y=146 -->
+                    <circle cx="102" cy="146" r="8" fill="var(--indigo)" opacity=".4"/>
+                    <text x="102" y="164" text-anchor="middle" font-size="10" fill="var(--indigo)" opacity=".5">N3 lama</text>
+                    <!-- N3 new (1.975, 0.66) → x=173, y=88 -->
+                    <circle cx="173" cy="88" r="10" fill="var(--amber)"/>
+                    <text x="173" y="79" text-anchor="middle" font-size="11" fill="var(--amber)" font-weight="700">N3 baru</text>
+                    <!-- Arrow from old to new -->
+                    <line x1="108" y1="140" x2="165" y2="94" stroke="var(--teal)" stroke-width="2.5" marker-end="url(#arr)"/>
+                    <text x="148" y="122" font-size="10" fill="var(--teal)" font-weight="600" transform="rotate(-35 148 122)">bergerak!</text>
+                    <!-- Input x=(3,1) → x=245, y=30 -->
+                    <circle cx="245" cy="30" r="10" fill="var(--amber)" opacity=".3"/>
+                    <text x="245" y="48" text-anchor="middle" font-size="10" fill="var(--amber)">input x</text>
+                    <!-- Other neurons (small movement) — spread out for clarity -->
+                    <circle cx="55" cy="42" r="6" fill="var(--indigo)" opacity=".3"/><text x="55" y="33" text-anchor="middle" font-size="9" fill="var(--indigo)" opacity=".5">N1</text>
+                    <circle cx="95" cy="50" r="6" fill="var(--indigo)" opacity=".3"/><text x="112" y="48" font-size="9" fill="var(--indigo)" opacity=".5">N2</text>
+                    <circle cx="75" cy="75" r="6" fill="var(--indigo)" opacity=".3"/><text x="60" y="82" font-size="9" fill="var(--indigo)" opacity=".5">N4</text>
+                </svg>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== 10: UPDATE SEMUA NEURON ===== -->
+<section class="slide" style="--sc:var(--amber)">
+    <div class="slide-content">
+        <div class="sec rv">04 — Perhitungan Manual</div>
+        <h2 class="rv d1">Langkah 3: Update Semua Neuron</h2>
+        <div class="two-col viz">
+            <div>
+                <p class="rv d2" style="margin-bottom:.4em;">Setiap neuron di-update berdasarkan rumus <strong>w<sub>j</sub>(baru) = w<sub>j</sub>(lama) + α · h · (x − w<sub>j</sub>)</strong>. BMU mendapat update terbesar, yang lain lebih kecil. <em>Pola kunci: semakin jauh neuron dari BMU di grid, semakin kecil update-nya. Inilah yang membuat SOM mempertahankan topologi.</em></p>
+                <div class="card accent rv d3" style="margin-bottom:.4em;">
+                    <h3>N1 (h = 0.249)</h3>
+                    <div class="calc">w₁ = (0.45, 0.89) + 0.5 × 0.249 × (2.55, 0.11)</div>
+                    <div class="calc">= (0.45 + 0.317, 0.89 + 0.014) = <strong>(0.767, 0.904)</strong></div>
+                </div>
+                <div class="card accent rv d4" style="margin-bottom:.4em;">
+                    <h3>N4 (h = 0.249)</h3>
+                    <div class="calc">w₄ = (0.62, 0.78) + 0.5 × 0.249 × (2.38, 0.22)</div>
+                    <div class="calc">= (0.62 + 0.296, 0.78 + 0.027) = <strong>(0.916, 0.807)</strong></div>
+                </div>
+                <div class="card accent rv d5">
+                    <h3>N2 (h = 0.062, paling jauh)</h3>
+                    <div class="calc">w₂ = (0.55, 0.83) + 0.5 × 0.062 × (2.45, 0.17)</div>
+                    <div class="calc">= (0.55 + 0.076, 0.83 + 0.005) = <strong>(0.626, 0.835)</strong></div>
+                </div>
+            </div>
+            <div class="rv d3" style="display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 300 272" style="width:100%;background:var(--bg-alt);border:1px solid var(--border);border-radius:14px;">
+                    <text x="150" y="20" text-anchor="middle" font-size="12" fill="var(--text-muted)" font-weight="600">Besaran Update per Neuron</text>
+                    <!-- Grid — widened to give N3's large circle room -->
+                    <line x1="75" y1="60" x2="225" y2="60" stroke="var(--border)" stroke-width="2"/>
+                    <line x1="75" y1="160" x2="225" y2="160" stroke="var(--border)" stroke-width="2"/>
+                    <line x1="75" y1="60" x2="75" y2="160" stroke="var(--border)" stroke-width="2"/>
+                    <line x1="225" y1="60" x2="225" y2="160" stroke="var(--border)" stroke-width="2"/>
+                    <!-- N1 - medium update -->
+                    <circle cx="75" cy="60" r="18" fill="var(--indigo)" opacity=".35"/>
+                    <text x="75" y="65" text-anchor="middle" font-size="12" fill="#fff" font-weight="700">N1</text>
+                    <text x="75" y="38" text-anchor="middle" font-size="10" fill="var(--indigo)" font-weight="600">h=0.249</text>
+                    <!-- N2 - small update -->
+                    <circle cx="225" cy="60" r="10" fill="var(--indigo)" opacity=".2"/>
+                    <text x="225" y="65" text-anchor="middle" font-size="12" fill="var(--indigo)" font-weight="700">N2</text>
+                    <text x="225" y="38" text-anchor="middle" font-size="10" fill="var(--text-muted)">h=0.062</text>
+                    <!-- N3 = BMU - largest update -->
+                    <circle cx="75" cy="160" r="28" fill="var(--amber)" opacity=".7"/>
+                    <text x="75" y="165" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">N3</text>
+                    <text x="75" y="200" text-anchor="middle" font-size="11" fill="var(--amber)" font-weight="700">BMU h=1.000</text>
+                    <!-- N4 - medium update -->
+                    <circle cx="225" cy="160" r="18" fill="var(--indigo)" opacity=".35"/>
+                    <text x="225" y="165" text-anchor="middle" font-size="12" fill="#fff" font-weight="700">N4</text>
+                    <text x="225" y="190" text-anchor="middle" font-size="10" fill="var(--indigo)" font-weight="600">h=0.249</text>
+                    <!-- Legend -->
+                    <text x="150" y="232" text-anchor="middle" font-size="12" fill="var(--text-sub)">Ukuran lingkaran = besaran update</text>
+                    <text x="150" y="250" text-anchor="middle" font-size="11" fill="var(--text-muted)">Semakin besar → semakin banyak bergerak ke arah input</text>
+                </svg>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== 11: TABEL SEBELUM SESUDAH ===== -->
+<section class="slide" style="--sc:var(--amber)">
+    <div class="slide-content">
+        <div class="sec rv">04 — Perhitungan Manual</div>
+        <h2 class="rv d1">Hasil: Bobot Sebelum vs Sesudah</h2>
+        <div class="two-col viz">
+            <div>
+                <table class="dtable rv d2">
+                    <thead><tr><th>Neuron</th><th>Bobot Lama</th><th>Bobot Baru</th><th>Δ (perubahan)</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>N1</strong></td><td>(0.45, 0.89)</td><td>(0.77, 0.90)</td><td>Δ=0.32</td></tr>
+                        <tr><td><strong>N2</strong></td><td>(0.55, 0.83)</td><td>(0.63, 0.84)</td><td>Δ=0.08</td></tr>
+                        <tr style="background:#fffbeb;"><td><strong style="color:var(--amber);">N3 (BMU)</strong></td><td>(0.95, 0.32)</td><td><strong>(1.98, 0.66)</strong></td><td><strong style="color:var(--amber);">Δ=1.07</strong></td></tr>
+                        <tr><td><strong>N4</strong></td><td>(0.62, 0.78)</td><td>(0.92, 0.81)</td><td>Δ=0.30</td></tr>
+                    </tbody>
+                </table>
+                <div class="card accent rv d3" style="margin-top:.6em;">
+                    <h3>Observasi Penting</h3>
+                    <ul class="blist" style="margin-top:.3em;">
+                        <li><strong>N3 (BMU)</strong> bergerak paling banyak: Δ = 1.07 — mendekati input secara signifikan</li>
+                        <li><strong>N1 &amp; N4</strong> bergerak sedang: Δ ≈ 0.30 — mereka tetangga langsung BMU di grid</li>
+                        <li><strong>N2</strong> hampir tidak bergerak: Δ = 0.08 — paling jauh dari BMU di grid (diagonal)</li>
+                        <li>Proses ini diulang <strong>ribuan kali</strong> dengan input berbeda hingga peta stabil</li>
+                        <li style="font-size:var(--sm);color:var(--text-sub);"><em>Stabil berarti perubahan bobot sudah sangat kecil — peta tidak berubah signifikan lagi antara iterasi.</em></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="rv d3" style="display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 300 268" style="width:100%;background:var(--bg-alt);border:1px solid var(--border);border-radius:14px;">
+                    <text x="150" y="20" text-anchor="middle" font-size="12" fill="var(--text-muted)" font-weight="600">Pergerakan Bobot di Ruang Data</text>
+                    <!-- Axes -->
+                    <line x1="30" y1="230" x2="280" y2="230" stroke="var(--text-muted)" stroke-width="1"/>
+                    <line x1="30" y1="15" x2="30" y2="230" stroke="var(--text-muted)" stroke-width="1"/>
+                    <text x="155" y="250" text-anchor="middle" font-size="10" fill="var(--text-muted)">w₁</text>
+                    <text x="14" y="122" font-size="10" fill="var(--text-muted)" transform="rotate(-90 14 122)">w₂</text>
+                    <!-- Scale: x=30+val*75, y=230-val*200 — spread out for clarity -->
+                    <!-- N1 old→new (0.45,0.89)→(0.77,0.90) -->
+                    <circle cx="55" cy="48" r="6" fill="var(--indigo)" opacity=".3"/><circle cx="82" cy="45" r="8" fill="var(--indigo)"/>
+                    <line x1="59" y1="47" x2="78" y2="45" stroke="var(--indigo)" stroke-width="1.5" marker-end="url(#arr)"/>
+                    <text x="82" y="33" text-anchor="middle" font-size="11" fill="var(--indigo)" font-weight="600">N1</text>
+                    <!-- N2 old→new (0.55,0.83)→(0.63,0.84) — tiny move -->
+                    <circle cx="60" cy="75" r="5" fill="var(--text-muted)" opacity=".3"/><circle cx="74" cy="72" r="6" fill="var(--text-muted)"/>
+                    <text x="90" y="75" font-size="10" fill="var(--text-muted)">N2 (kecil)</text>
+                    <!-- N4 old→new (0.62,0.78)→(0.92,0.81) -->
+                    <circle cx="70" cy="100" r="6" fill="var(--indigo)" opacity=".3"/><circle cx="100" cy="92" r="8" fill="var(--indigo)"/>
+                    <line x1="74" y1="99" x2="96" y2="93" stroke="var(--indigo)" stroke-width="1.5" marker-end="url(#arr)"/>
+                    <text x="100" y="110" text-anchor="middle" font-size="11" fill="var(--indigo)" font-weight="600">N4</text>
+                    <!-- N3 old→new (0.95,0.32)→(1.975,0.66) — BIG move -->
+                    <circle cx="101" cy="166" r="7" fill="var(--amber)" opacity=".3"/>
+                    <circle cx="178" cy="98" r="12" fill="var(--amber)"/>
+                    <line x1="107" y1="160" x2="170" y2="104" stroke="var(--amber)" stroke-width="3" marker-end="url(#arr)"/>
+                    <text x="178" y="88" text-anchor="middle" font-size="13" fill="var(--amber)" font-weight="700">N3</text>
+                    <text x="145" y="140" font-size="11" fill="var(--amber)" font-weight="600" transform="rotate(-40 145 140)">Δ = 1.07!</text>
+                    <!-- Input -->
+                    <circle cx="255" cy="30" r="10" fill="var(--rose)" opacity=".4"/>
+                    <text x="255" y="48" text-anchor="middle" font-size="11" fill="var(--rose)" font-weight="600">input x</text>
+                </svg>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== 12: DUA FASE TRAINING ===== -->
+<section class="slide" style="--sc:var(--indigo)">
+    <div class="slide-content">
+        <div class="sec rv">04 — Perhitungan Manual</div>
+        <h2 class="rv d1">Dua Fase Training SOM</h2>
+        <div class="two-col viz">
+            <div>
+                <div class="card accent rv d2" style="margin-bottom:.6em;">
+                    <h3>Fase 1: Ordering (Self-Organizing)</h3>
+                    <ul class="blist" style="margin-top:.3em;">
+                        <li>~1000 iterasi pertama <span style="font-size:var(--sm);color:var(--text-sub);">(Contoh: untuk dataset 500 sampel, ~1000 iterasi cukup untuk fase ordering.)</span></li>
+                        <li>Learning rate <strong>besar</strong> (α ≈ 0.1–1.0)</li>
+                        <li>Radius neighborhood <strong>besar</strong> (setengah grid)</li>
+                        <li>Peta "membuka lipatan" dan menata diri secara topologi — pergerakan bobot <strong>drastis</strong></li>
+                        <li>Organisasi <strong>kasar</strong> terbentuk</li>
+                    </ul>
+                </div>
+                <div class="card accent rv d3">
+                    <h3>Fase 2: Convergence (Fine-Tuning)</h3>
+                    <ul class="blist" style="margin-top:.3em;">
+                        <li>Rekomendasi: ≥ 500 × jumlah neuron iterasi <span style="font-size:var(--sm);color:var(--text-sub);">(Contoh: grid 10×10 = 100 neuron → minimal 50.000 iterasi untuk fine-tuning.)</span></li>
+                        <li>Learning rate <strong>kecil</strong> (α ≈ 0.01)</li>
+                        <li>Radius <strong>kecil</strong> (1–2 neuron)</li>
+                        <li>Peta menyesuaikan detil — pergerakan bobot <strong>halus</strong></li>
+                        <li>Akurasi statistik representasi <strong>dioptimalkan</strong></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="rv d3" style="display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 320 268" style="width:100%;background:var(--bg-alt);border:1px solid var(--border);border-radius:14px;">
+                    <text x="160" y="20" text-anchor="middle" font-size="12" fill="var(--text-muted)" font-weight="600">Evolusi Grid Selama Training</text>
+                    <!-- Phase 1: messy grid -->
+                    <text x="85" y="42" text-anchor="middle" font-size="11" fill="var(--indigo)" font-weight="700">Fase 1: Awal</text>
+                    <rect x="20" y="48" width="130" height="90" rx="8" fill="#fff" stroke="var(--border)"/>
+                    <!-- Tangled grid -->
+                    <line x1="40" y1="65" x2="90" y2="80" stroke="var(--indigo)" stroke-width="1" opacity=".5"/>
+                    <line x1="90" y1="80" x2="55" y2="110" stroke="var(--indigo)" stroke-width="1" opacity=".5"/>
+                    <line x1="55" y1="110" x2="120" y2="70" stroke="var(--indigo)" stroke-width="1" opacity=".5"/>
+                    <line x1="120" y1="70" x2="80" y2="120" stroke="var(--indigo)" stroke-width="1" opacity=".5"/>
+                    <circle cx="40" cy="65" r="5" fill="var(--indigo)"/><circle cx="90" cy="80" r="5" fill="var(--indigo)"/>
+                    <circle cx="55" cy="110" r="5" fill="var(--indigo)"/><circle cx="120" cy="70" r="5" fill="var(--indigo)"/>
+                    <circle cx="80" cy="120" r="5" fill="var(--indigo)"/>
+                    <text x="85" y="150" text-anchor="middle" font-size="10" fill="var(--rose)" font-weight="600">Acak, belum teratur</text>
+                    <!-- Arrow -->
+                    <text x="155" y="100" font-size="20" fill="var(--text-muted)">→</text>
+                    <!-- Phase 2: organized grid -->
+                    <text x="240" y="42" text-anchor="middle" font-size="11" fill="var(--teal)" font-weight="700">Fase 2: Akhir</text>
+                    <rect x="175" y="48" width="130" height="90" rx="8" fill="#fff" stroke="var(--border)"/>
+                    <!-- Nice ordered grid -->
+                    <line x1="195" y1="68" x2="245" y2="68" stroke="var(--teal)" stroke-width="1.5"/>
+                    <line x1="245" y1="68" x2="285" y2="68" stroke="var(--teal)" stroke-width="1.5"/>
+                    <line x1="195" y1="98" x2="245" y2="98" stroke="var(--teal)" stroke-width="1.5"/>
+                    <line x1="245" y1="98" x2="285" y2="98" stroke="var(--teal)" stroke-width="1.5"/>
+                    <line x1="195" y1="125" x2="245" y2="125" stroke="var(--teal)" stroke-width="1.5"/>
+                    <line x1="245" y1="125" x2="285" y2="125" stroke="var(--teal)" stroke-width="1.5"/>
+                    <line x1="195" y1="68" x2="195" y2="125" stroke="var(--teal)" stroke-width="1.5"/>
+                    <line x1="245" y1="68" x2="245" y2="125" stroke="var(--teal)" stroke-width="1.5"/>
+                    <line x1="285" y1="68" x2="285" y2="125" stroke="var(--teal)" stroke-width="1.5"/>
+                    <circle cx="195" cy="68" r="5" fill="var(--teal)"/><circle cx="245" cy="68" r="5" fill="var(--teal)"/>
+                    <circle cx="285" cy="68" r="5" fill="var(--teal)"/><circle cx="195" cy="98" r="5" fill="var(--teal)"/>
+                    <circle cx="245" cy="98" r="5" fill="var(--teal)"/><circle cx="285" cy="98" r="5" fill="var(--teal)"/>
+                    <circle cx="195" cy="125" r="5" fill="var(--teal)"/><circle cx="245" cy="125" r="5" fill="var(--teal)"/>
+                    <circle cx="285" cy="125" r="5" fill="var(--teal)"/>
+                    <text x="240" y="148" text-anchor="middle" font-size="10" fill="var(--teal)" font-weight="600">Teratur, mengikuti data</text>
+                    <!-- Data clouds (gray) -->
+                    <circle cx="55" cy="185" r="4" fill="var(--text-muted)" opacity=".2"/><circle cx="65" cy="195" r="4" fill="var(--text-muted)" opacity=".2"/>
+                    <circle cx="48" cy="200" r="4" fill="var(--text-muted)" opacity=".2"/><circle cx="72" cy="190" r="4" fill="var(--text-muted)" opacity=".2"/>
+                    <circle cx="180" cy="200" r="4" fill="var(--text-muted)" opacity=".2"/><circle cx="195" cy="195" r="4" fill="var(--text-muted)" opacity=".2"/>
+                    <circle cx="188" cy="210" r="4" fill="var(--text-muted)" opacity=".2"/>
+                    <circle cx="270" cy="185" r="4" fill="var(--text-muted)" opacity=".2"/><circle cx="280" cy="195" r="4" fill="var(--text-muted)" opacity=".2"/>
+                    <circle cx="260" cy="200" r="4" fill="var(--text-muted)" opacity=".2"/>
+                    <text x="160" y="230" text-anchor="middle" font-size="11" fill="var(--text-sub)">Grid dimulai acak → secara bertahap meregang</text>
+                    <text x="160" y="248" text-anchor="middle" font-size="11" fill="var(--text-sub)">menutupi distribusi data (titik abu-abu)</text>
+                </svg>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== PIPELINE LENGKAP: SOM → CLUSTER ===== -->
+<section class="slide" style="--sc:var(--rose)">
+    <div class="slide-content">
+        <div class="sec rv">04b — Dari SOM ke Cluster</div>
+        <h2 class="rv d1">SOM Saja Belum Menghasilkan Cluster!</h2>
+        <div class="two-col viz">
+            <div>
+                <p class="rv d2" style="margin-bottom:.4em;padding:.5em;background:var(--rose);color:#fff;border-radius:8px;font-size:var(--sm);"><strong>Penting:</strong> SOM yang kita pelajari di slide sebelumnya adalah tahap pertama (dimensionality reduction). Untuk mendapatkan cluster, kita perlu menambahkan tahap kedua: mengelompokkan neuron-neuron SOM menggunakan algoritma clustering seperti K-Means.</p>
+                <div class="card rv d3" style="border:2px solid var(--rose);border-radius:12px;padding:clamp(.6rem,1.5vw,1.2rem);margin-bottom:.5em;">
+                    <h3 style="color:var(--rose);">Kesalahpahaman Umum</h3>
+                    <p style="margin-top:.3em;">Banyak tutorial <strong>hanya menunjukkan training SOM</strong> (update bobot) tanpa menjelaskan bagaimana mendapatkan <strong>label cluster akhir</strong>. SOM sejatinya adalah <strong>dimensionality reduction + vector quantization</strong>, bukan clustering langsung.</p>
+                    <p style="margin-top:.3em;font-size:var(--sm);color:var(--text-sub);">SOM hanya mengorganisir neuron di grid — ia tidak menentukan berapa jumlah cluster atau memberi label pada data.</p>
+                </div>
+                <div class="card accent rv d3">
+                    <h3>Pipeline Lengkap (3 Tahap)</h3>
+                    <div class="steps" style="margin-top:.3em;">
+                        <div class="step"><div class="step-n" style="background:var(--indigo);">1</div><p><strong>Train SOM</strong> — Update bobot iteratif hingga konvergen. Hasilnya: grid neuron dengan vektor bobot terlatih.</p></div>
+                        <div class="step"><div class="step-n" style="background:var(--rose);">2</div><p><strong>Cluster-kan neuron SOM</strong> — Terapkan K-Means, Hierarchical, atau analisis U-Matrix pada <strong>vektor bobot neuron</strong> untuk mengelompokkan neuron ke dalam cluster. <em>(Tahap yang sering terlewat!)</em></p></div>
+                        <div class="step"><div class="step-n" style="background:var(--teal);">3</div><p><strong>Assign label ke data</strong> — Setiap data asli mendapat label cluster dari <strong>BMU-nya</strong>. Data → BMU → Cluster BMU = Cluster data.</p></div>
+                    </div>
+                </div>
+            </div>
+            <div class="rv d3" style="display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 320 340" style="width:100%;background:var(--bg-alt);border:1px solid var(--border);border-radius:14px;">
+                    <text x="160" y="20" text-anchor="middle" font-size="12" fill="var(--text-muted)" font-weight="600">Pipeline: SOM → Clustering → Label</text>
+                    <!-- Stage 1: Train SOM -->
+                    <rect x="30" y="35" width="260" height="55" rx="10" fill="var(--indigo)" opacity=".1" stroke="var(--indigo)" stroke-width="1.5"/>
+                    <text x="50" y="55" font-size="12" fill="var(--indigo)" font-weight="700">Tahap 1: Train SOM</text>
+                    <text x="50" y="73" font-size="10" fill="var(--text-sub)">Bobot neuron konvergen ke distribusi data</text>
+                    <circle cx="285" cy="62" r="8" fill="var(--indigo)"/><text x="285" y="66" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">w</text>
+                    <!-- Arrow 1 -->
+                    <line x1="160" y1="92" x2="160" y2="112" stroke="var(--text-muted)" stroke-width="2" marker-end="url(#arr)"/>
+                    <!-- Stage 2: Cluster neurons -->
+                    <rect x="30" y="115" width="260" height="75" rx="10" fill="var(--rose)" opacity=".1" stroke="var(--rose)" stroke-width="2" stroke-dasharray="5 3"/>
+                    <text x="50" y="135" font-size="12" fill="var(--rose)" font-weight="700">Tahap 2: Cluster Neuron</text>
+                    <text x="50" y="152" font-size="10" fill="var(--text-sub)">K-Means / Hierarchical pada vektor bobot</text>
+                    <text x="50" y="167" font-size="10" fill="var(--rose)" font-weight="600">Tahap yang SERING HILANG!</text>
+                    <!-- Mini neurons being grouped — spread for clarity -->
+                    <circle cx="228" cy="132" r="5" fill="var(--blue)"/><circle cx="245" cy="128" r="5" fill="var(--blue)"/>
+                    <circle cx="250" cy="160" r="5" fill="var(--amber)"/><circle cx="268" cy="164" r="5" fill="var(--amber)"/>
+                    <circle cx="283" cy="140" r="5" fill="var(--teal)"/>
+                    <ellipse cx="236" cy="130" rx="18" ry="12" fill="none" stroke="var(--blue)" stroke-width="1" stroke-dasharray="3 2"/>
+                    <ellipse cx="260" cy="162" rx="18" ry="12" fill="none" stroke="var(--amber)" stroke-width="1" stroke-dasharray="3 2"/>
+                    <!-- Arrow 2 -->
+                    <line x1="160" y1="192" x2="160" y2="212" stroke="var(--text-muted)" stroke-width="2" marker-end="url(#arr)"/>
+                    <!-- Stage 3: Assign labels -->
+                    <rect x="30" y="215" width="260" height="55" rx="10" fill="var(--teal)" opacity=".1" stroke="var(--teal)" stroke-width="1.5"/>
+                    <text x="50" y="235" font-size="12" fill="var(--teal)" font-weight="700">Tahap 3: Assign Label</text>
+                    <text x="50" y="252" font-size="10" fill="var(--text-sub)">Data → BMU → Cluster BMU = Label data</text>
+                    <!-- Data points with labels -->
+                    <circle cx="230" cy="228" r="5" fill="var(--blue)"/><text x="240" y="232" font-size="9" fill="var(--blue)" font-weight="600">C1</text>
+                    <circle cx="230" cy="245" r="5" fill="var(--amber)"/><text x="240" y="249" font-size="9" fill="var(--amber)" font-weight="600">C2</text>
+                    <circle cx="265" cy="236" r="5" fill="var(--teal)"/><text x="275" y="240" font-size="9" fill="var(--teal)" font-weight="600">C3</text>
+                    <!-- Final output -->
+                    <rect x="60" y="285" width="200" height="35" rx="8" fill="var(--accent)" opacity=".08" stroke="var(--accent)" stroke-width="1"/>
+                    <text x="160" y="307" text-anchor="middle" font-size="12" fill="var(--accent)" font-weight="700">Output: Setiap data memiliki label cluster</text>
+                    <line x1="160" y1="272" x2="160" y2="283" stroke="var(--text-muted)" stroke-width="2" marker-end="url(#arr)"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== DUA PENDEKATAN CLUSTERING SOM ===== -->
+<section class="slide" style="--sc:var(--rose)">
+    <div class="slide-content">
+        <div class="sec rv">04b — Dari SOM ke Cluster</div>
+        <h2 class="rv d1">Dua Pendekatan Mendapatkan Cluster dari SOM</h2>
+        <div class="two-col" style="margin-top:.4em;">
+            <div class="card accent rv d2" style="border-left-color:var(--blue);">
+                <h3 style="color:var(--blue);">Pendekatan A: Grid Kecil (1 neuron = 1 cluster)</h3>
+                <p style="margin-top:.3em;margin-bottom:.4em;">Gunakan grid kecil dimana <strong>jumlah neuron = jumlah cluster</strong> yang diinginkan. Contoh: grid 1×3 untuk 3 cluster.</p>
+                <div class="formula" style="font-size:var(--sm);">Grid 1×3 → 3 neuron → 3 cluster</div>
+                <ul class="blist" style="margin-top:.4em;">
+                    <li>Sederhana, langsung dapat label</li>
+                    <li>Kehilangan manfaat <strong>preservasi topologi</strong> <span style="font-size:var(--sm);color:var(--text-sub);">(Preservasi topologi berarti: data yang mirip tetap ditempatkan di neuron yang berdekatan di grid. Manfaat ini hilang jika grid terlalu kecil.)</span></li>
+                    <li>Cocok untuk kasus sederhana</li>
+                </ul>
+                <div class="codeblock" style="margin-top:.4em;font-size:var(--code);">som = <span class="fn">MiniSom</span>(<span class="num">1</span>, <span class="num">3</span>, n_features)
+<span class="cm"># Setiap neuron = 1 cluster</span>
+<span class="var">label</span> = som.<span class="fn">winner</span>(x)  <span class="cm"># → (0,0) atau (0,1) atau (0,2)</span></div>
+            </div>
+            <div class="card accent rv d3" style="border-left-color:var(--rose);">
+                <h3 style="color:var(--rose);">Pendekatan B: Two-Stage Clustering (Standar)</h3>
+                <p style="margin-top:.3em;margin-bottom:.4em;">Gunakan grid besar (misal 10×10), lalu <strong>cluster-kan neuron-neuron</strong> dengan K-Means atau Hierarchical Clustering pada vektor bobot.</p>
+                <div class="formula" style="font-size:var(--sm);">Grid 10×10 → 100 neuron → K-Means → K cluster</div>
+                <ul class="blist" style="margin-top:.4em;">
+                    <li><strong>Standar akademik</strong> (Vesanto &amp; Alhoniemi, 2000)</li>
+                    <li>Noise reduction: bobot = rata-rata lokal data</li>
+                    <li>Efisien: cluster 100 neuron, bukan 100.000 data</li>
+                </ul>
+                <div class="codeblock" style="margin-top:.4em;font-size:var(--code);"><span class="cm"># Tahap 2: Cluster vektor bobot</span>
+<span class="cm"># get_weights() mengembalikan vektor bobot semua neuron</span>
+<span class="cm"># reshape(-1, n) mengubah grid 2D menjadi daftar 1D untuk diproses K-Means</span>
+<span class="var">weights</span> = som.<span class="fn">get_weights</span>().<span class="fn">reshape</span>(<span class="num">-1</span>, n)
+<span class="var">neuron_labels</span> = <span class="fn">KMeans</span>(<span class="num">3</span>).<span class="fn">fit_predict</span>(<span class="var">weights</span>)
+<span class="cm"># Tahap 3: Assign ke data asli</span>
+<span class="var">data_label</span> = neuron_labels[som.<span class="fn">winner</span>(x)]</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== CONTOH MANUAL: ASSIGN CLUSTER ===== -->
+<section class="slide" style="--sc:var(--rose)">
+    <div class="slide-content">
+        <div class="sec rv">04b — Dari SOM ke Cluster</div>
+        <h2 class="rv d1">Contoh Manual: Assign Cluster Akhir</h2>
+        <div class="two-col viz">
+            <div>
+                <p class="rv d2" style="margin-bottom:.3em;">Setelah <strong>ribuan iterasi</strong> training, bobot akhir neuron grid 2×2 sudah konvergen:</p>
+                <table class="dtable rv d3" style="margin-bottom:.4em;">
+                    <thead><tr><th>Neuron</th><th>Bobot Akhir</th><th>Kelompok?</th></tr></thead>
+                    <tbody>
+                        <tr style="background:#eff6ff;"><td><strong>N1</strong></td><td>(1.2, 2.8)</td><td rowspan="2" style="vertical-align:middle;"><strong style="color:var(--blue);">Cluster A</strong><br><span style="font-size:var(--sm);color:var(--text-muted);">bobot mirip</span></td></tr>
+                        <tr style="background:#eff6ff;"><td><strong>N2</strong></td><td>(0.8, 2.5)</td></tr>
+                        <tr style="background:#fef3c7;"><td><strong>N3</strong></td><td>(2.7, 0.5)</td><td rowspan="2" style="vertical-align:middle;"><strong style="color:var(--amber);">Cluster B</strong><br><span style="font-size:var(--sm);color:var(--text-muted);">bobot mirip</span></td></tr>
+                        <tr style="background:#fef3c7;"><td><strong>N4</strong></td><td>(2.3, 0.8)</td></tr>
+                    </tbody>
+                </table>
+                <div class="card accent rv d4" style="margin-bottom:.4em;border-left-color:var(--rose);">
+                    <h3>Tahap 2: K-Means pada Vektor Bobot (K=2)</h3>
+                    <div class="calc">d(N1,N2) = √[(0.4)² + (0.3)²] = <strong>0.50</strong> <span class="ok">dekat!</span></div>
+                    <div class="calc">d(N3,N4) = √[(0.4)² + (0.3)²] = <strong>0.50</strong> <span class="ok">dekat!</span></div>
+                    <div class="calc">d(N1,N3) = √[(1.5)² + (2.3)²] = <strong>2.75</strong> (jauh)</div>
+                    <div class="calc">d(N2,N4) = √[(1.5)² + (1.7)²] = <strong>2.27</strong> (jauh)</div>
+                    <div class="calc" style="margin-top:.2em;">N1 &amp; N2 dekat → <span class="ok"><strong>Cluster A</strong></span></div>
+                    <div class="calc">N3 &amp; N4 dekat → <span class="ok"><strong>Cluster B</strong></span></div>
+                </div>
+                <div class="card accent rv d5" style="border-left-color:var(--teal);">
+                    <h3>Tahap 3: Assign Data Asli via BMU</h3>
+                    <div class="calc">x₁=(3.0, 0.3): BMU=N3 (d=0.36) → <strong style="color:var(--amber);">Cluster B</strong></div>
+                    <div class="calc">x₂=(1.0, 3.0): BMU=N1 (d=0.28) → <strong style="color:var(--blue);">Cluster A</strong></div>
+                    <div class="calc">x₃=(0.5, 2.2): BMU=N2 (d=0.42) → <strong style="color:var(--blue);">Cluster A</strong></div>
+                    <div class="calc">x₄=(2.5, 0.6): BMU=N3 (d=0.22) → <strong style="color:var(--amber);">Cluster B</strong></div>
+                    <p style="margin-top:.4em;font-size:var(--sm);color:var(--text-sub);border-top:1px solid var(--border);padding-top:.3em;"><strong>Langkah terakhir:</strong> setiap data input dicari BMU-nya → lihat BMU masuk cluster mana → data tersebut mendapat label cluster yang sama. Contoh: data (3.0, 1.0) → BMU = N3 → N3 di Cluster B → data dilabeli Cluster B.</p>
+                </div>
+            </div>
+            <div class="rv d3" style="display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 300 320" style="width:100%;background:var(--bg-alt);border:1px solid var(--border);border-radius:14px;">
+                    <text x="150" y="20" text-anchor="middle" font-size="12" fill="var(--text-muted)" font-weight="600">Hasil Akhir: Data dengan Label Cluster</text>
+                    <!-- Axes: scale x=40+val*75, y=270-val*75 -->
+                    <line x1="40" y1="270" x2="280" y2="270" stroke="var(--text-muted)" stroke-width="1"/>
+                    <line x1="40" y1="30" x2="40" y2="270" stroke="var(--text-muted)" stroke-width="1"/>
+                    <text x="160" y="290" text-anchor="middle" font-size="11" fill="var(--text-muted)">w₁</text>
+                    <text x="22" y="150" font-size="11" fill="var(--text-muted)" transform="rotate(-90 22 150)">w₂</text>
+                    <!-- Cluster A region (top-left): high w2 -->
+                    <ellipse cx="110" cy="75" rx="70" ry="55" fill="var(--blue)" opacity=".06" stroke="var(--blue)" stroke-width="1.5" stroke-dasharray="5 3"/>
+                    <text x="55" y="42" font-size="13" fill="var(--blue)" font-weight="700">Cluster A</text>
+                    <!-- Cluster B region (bottom-right): high w1, low w2 -->
+                    <ellipse cx="215" cy="220" rx="65" ry="50" fill="var(--amber)" opacity=".06" stroke="var(--amber)" stroke-width="1.5" stroke-dasharray="5 3"/>
+                    <text x="250" y="260" font-size="13" fill="var(--amber)" font-weight="700">Cluster B</text>
+                    <!-- Neuron N1 (1.2,2.8) → x=130, y=60 Cluster A -->
+                    <circle cx="130" cy="60" r="11" fill="var(--blue)"/>
+                    <text x="130" y="64" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">N1</text>
+                    <!-- Neuron N2 (0.8,2.5) → x=100, y=83 Cluster A -->
+                    <circle cx="100" cy="83" r="11" fill="var(--blue)"/>
+                    <text x="100" y="87" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">N2</text>
+                    <!-- Neuron N3 (2.7,0.5) → x=243, y=233 Cluster B -->
+                    <circle cx="243" cy="233" r="11" fill="var(--amber)"/>
+                    <text x="243" y="237" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">N3</text>
+                    <!-- Neuron N4 (2.3,0.8) → x=213, y=210 Cluster B -->
+                    <circle cx="213" cy="210" r="11" fill="var(--amber)"/>
+                    <text x="213" y="214" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">N4</text>
+                    <!-- Data x1=(3,0.3) → Cluster B -->
+                    <circle cx="265" cy="248" r="6" fill="var(--amber)" opacity=".5"/>
+                    <text x="275" y="245" font-size="9" fill="var(--amber)" font-weight="600">x₁</text>
+                    <line x1="260" y1="245" x2="250" y2="237" stroke="var(--amber)" stroke-width="1" stroke-dasharray="3 2"/>
+                    <!-- Data x2=(1,3) → Cluster A -->
+                    <circle cx="115" cy="45" r="6" fill="var(--blue)" opacity=".5"/>
+                    <text x="100" y="42" font-size="9" fill="var(--blue)" font-weight="600">x₂</text>
+                    <line x1="118" y1="48" x2="126" y2="55" stroke="var(--blue)" stroke-width="1" stroke-dasharray="3 2"/>
+                    <!-- Data x3=(0.5,2.2) → Cluster A -->
+                    <circle cx="78" cy="105" r="6" fill="var(--blue)" opacity=".5"/>
+                    <text x="63" y="108" font-size="9" fill="var(--blue)" font-weight="600">x₃</text>
+                    <line x1="84" y1="100" x2="95" y2="88" stroke="var(--blue)" stroke-width="1" stroke-dasharray="3 2"/>
+                    <!-- Data x4=(2.5,0.6) → Cluster B -->
+                    <circle cx="225" cy="248" r="6" fill="var(--amber)" opacity=".5"/>
+                    <text x="208" y="252" font-size="9" fill="var(--amber)" font-weight="600">x₄</text>
+                    <line x1="229" y1="244" x2="237" y2="238" stroke="var(--amber)" stroke-width="1" stroke-dasharray="3 2"/>
+                    <!-- Legend box -->
+                    <rect x="50" y="290" width="200" height="20" rx="6" fill="var(--accent)" opacity=".06"/>
+                    <text x="150" y="304" text-anchor="middle" font-size="10" fill="var(--accent)" font-weight="600">Data → BMU → Cluster BMU = Label Akhir</text>
+                </svg>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== 13: INSPIRASI BIOLOGIS ===== -->
+<section class="slide" style="--sc:var(--blue)">
+    <div class="slide-content">
+        <div class="sec rv">05 — Konteks</div>
+        <h2 class="rv d1">Inspirasi Biologis: Peta Otak</h2>
+        <div class="two-col viz">
+            <div>
+                <p class="rv d2" style="margin-bottom:.5em;">SOM terinspirasi oleh cara <strong>korteks otak</strong> manusia mengorganisir informasi sensorik. Neuron-neuron yang merespons stimulus serupa terletak <strong>berdekatan secara fisik</strong> di otak.</p>
+                <div class="card accent rv d3" style="margin-bottom:.5em;">
+                    <h3>Contoh di Otak</h3>
+                    <ul class="blist" style="margin-top:.3em;">
+                        <li><strong>Somatotopic map:</strong> Jari tangan dipetakan berdekatan di korteks sensorik — jari telunjuk dan jari tengah merespons di area yang bersebelahan</li>
+                        <li><strong>Tonotopic map:</strong> Frekuensi suara rendah dan tinggi dipetakan berurutan di korteks pendengaran</li>
+                        <li><strong>Retinotopic map:</strong> Area yang berdekatan di retina dipetakan ke area berdekatan di korteks visual</li>
+                    </ul>
+                </div>
+                <p class="rv d4" style="font-size:var(--sm);color:var(--text-muted);">SOM meniru prinsip ini secara komputasional — data yang mirip dipetakan ke neuron yang berdekatan di grid.</p>
+            </div>
+            <div class="rv d3" style="display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 300 250" style="width:100%;background:var(--bg-alt);border:1px solid var(--border);border-radius:14px;">
+                    <text x="150" y="20" text-anchor="middle" font-size="12" fill="var(--text-muted)" font-weight="600">Analogi: Peta Sensorik di Otak</text>
+                    <!-- Brain outline -->
+                    <ellipse cx="150" cy="120" rx="120" ry="85" fill="none" stroke="var(--blue)" stroke-width="2" opacity=".3"/>
+                    <path d="M 80 60 Q 110 40, 150 38 Q 190 40, 220 60" fill="none" stroke="var(--blue)" stroke-width="1.5" opacity=".3"/>
+                    <!-- Regions in brain -->
+                    <!-- Tangan area -->
+                    <ellipse cx="80" cy="85" rx="28" ry="18" fill="var(--indigo)" opacity=".12" stroke="var(--indigo)" stroke-width="1.5" stroke-dasharray="3 2"/>
+                    <text x="80" y="83" text-anchor="middle" font-size="10" fill="var(--indigo)" font-weight="600">Tangan</text>
+                    <text x="80" y="95" text-anchor="middle" font-size="9" fill="var(--indigo)">&#128400;</text>
+                    <!-- Wajah area — nearby but separated -->
+                    <ellipse cx="150" cy="72" rx="26" ry="16" fill="var(--rose)" opacity=".12" stroke="var(--rose)" stroke-width="1.5" stroke-dasharray="3 2"/>
+                    <text x="150" y="70" text-anchor="middle" font-size="10" fill="var(--rose)" font-weight="600">Wajah</text>
+                    <text x="150" y="82" text-anchor="middle" font-size="9" fill="var(--rose)">&#128522;</text>
+                    <!-- Kaki area — far from hand -->
+                    <ellipse cx="218" cy="92" rx="26" ry="18" fill="var(--teal)" opacity=".12" stroke="var(--teal)" stroke-width="1.5" stroke-dasharray="3 2"/>
+                    <text x="218" y="90" text-anchor="middle" font-size="10" fill="var(--teal)" font-weight="600">Kaki</text>
+                    <text x="218" y="102" text-anchor="middle" font-size="9" fill="var(--teal)">&#129462;</text>
+                    <!-- Pendengaran -->
+                    <ellipse cx="105" cy="140" rx="28" ry="16" fill="var(--amber)" opacity=".12" stroke="var(--amber)" stroke-width="1.5" stroke-dasharray="3 2"/>
+                    <text x="105" y="138" text-anchor="middle" font-size="10" fill="var(--amber)" font-weight="600">Pendengaran</text>
+                    <text x="105" y="150" text-anchor="middle" font-size="9" fill="var(--amber)">&#127925;</text>
+                    <!-- Penglihatan -->
+                    <ellipse cx="195" cy="143" rx="28" ry="16" fill="var(--violet)" opacity=".12" stroke="var(--violet)" stroke-width="1.5" stroke-dasharray="3 2"/>
+                    <text x="195" y="141" text-anchor="middle" font-size="10" fill="var(--violet)" font-weight="600">Penglihatan</text>
+                    <text x="195" y="153" text-anchor="middle" font-size="9" fill="var(--violet)">&#128065;&#65039;</text>
+                    <!-- Annotation -->
+                    <text x="150" y="200" text-anchor="middle" font-size="12" fill="var(--text-sub)" font-family="Plus Jakarta Sans">Stimulus serupa → neuron berdekatan</text>
+                    <text x="150" y="218" text-anchor="middle" font-size="11" fill="var(--text-sub)" font-family="Plus Jakarta Sans">(sama seperti SOM memetakan data serupa</text>
+                    <text x="150" y="234" text-anchor="middle" font-size="11" fill="var(--text-sub)" font-family="Plus Jakarta Sans">ke posisi berdekatan di grid)</text>
+                </svg>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== 14: PARAMETER GUIDE ===== -->
+<section class="slide" style="--sc:var(--emerald)">
+    <div class="slide-content">
+        <div class="sec rv">05 — Konteks</div>
+        <h2 class="rv d1">Panduan Pemilihan Parameter</h2>
+        <div class="two-col viz">
+            <div>
+                <table class="dtable rv d2">
+                    <thead><tr><th>Parameter</th><th>Rekomendasi</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>Grid size</strong></td><td>≈ 5 × √(jumlah data), misal 1000 data → grid 16×16</td></tr>
+                        <tr><td><strong>α awal</strong></td><td>0.1 – 1.0 (turun secara eksponensial)</td></tr>
+                        <tr><td><strong>σ awal</strong></td><td>Setengah diameter grid</td></tr>
+                        <tr><td><strong>Iterasi</strong></td><td>Fase 1: ~1000, Fase 2: ≥500 × jumlah neuron</td></tr>
+                        <tr><td><strong>Topologi grid</strong></td><td>Hexagonal (6 tetangga) lebih baik dari rectangular (4 tetangga). Alasan: pada grid hexagonal, jarak ke 6 tetangga seragam. Pada rectangular, 4 tetangga langsung lebih dekat dari 4 tetangga diagonal.</td></tr>
+                        <tr><td><strong>Inisialisasi</strong></td><td>PCA lebih stabil, random lebih umum</td></tr>
+                    </tbody>
+                </table>
+                <div class="card accent rv d3" style="margin-top:.5em;">
+                    <h3>Quality Measures</h3>
+                    <ul class="blist" style="margin-top:.3em;">
+                        <li><strong>Quantization Error:</strong> Rata-rata jarak data ke BMU-nya. Semakin kecil semakin baik — menunjukkan seberapa akurat peta merepresentasikan data. QE yang baik: bandingkan dengan standar deviasi data. QE &lt; 0.5 × std(data) umumnya bagus.</li>
+                        <li><strong>Topographic Error:</strong> Fraksi data yang BMU dan second-BMU-nya tidak bersebelahan di grid. Semakin kecil semakin baik — menunjukkan kualitas preservasi topologi. TE &lt; 0.05 (5%) menandakan topologi terpreservasi dengan baik.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="rv d3" style="display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 300 250" style="width:100%;background:var(--bg-alt);border:1px solid var(--border);border-radius:14px;">
+                    <text x="150" y="20" text-anchor="middle" font-size="12" fill="var(--text-muted)" font-weight="600">Pengaruh Parameter terhadap Hasil</text>
+                    <!-- Small sigma -->
+                    <text x="80" y="45" text-anchor="middle" font-size="11" fill="var(--rose)" font-weight="700">σ terlalu kecil</text>
+                    <rect x="20" y="50" width="120" height="80" rx="8" fill="#fff" stroke="var(--border)"/>
+                    <!-- Fragmented clusters -->
+                    <circle cx="45" cy="70" r="4" fill="var(--indigo)"/><circle cx="55" cy="75" r="4" fill="var(--amber)"/>
+                    <circle cx="70" cy="68" r="4" fill="var(--rose)"/><circle cx="85" cy="78" r="4" fill="var(--teal)"/>
+                    <circle cx="50" cy="95" r="4" fill="var(--violet)"/><circle cx="100" cy="90" r="4" fill="var(--indigo)"/>
+                    <circle cx="75" cy="110" r="4" fill="var(--amber)"/><circle cx="110" cy="105" r="4" fill="var(--rose)"/>
+                    <text x="80" y="142" text-anchor="middle" font-size="9" fill="var(--rose)" font-weight="600">Peta kacau, tidak teratur</text>
+                    <!-- Good sigma -->
+                    <text x="230" y="45" text-anchor="middle" font-size="11" fill="var(--teal)" font-weight="700">σ tepat</text>
+                    <rect x="170" y="50" width="120" height="80" rx="8" fill="#fff" stroke="var(--border)"/>
+                    <!-- Nice ordered grid -->
+                    <g stroke="var(--teal)" stroke-width="1" opacity=".5">
+                        <line x1="190" y1="70" x2="230" y2="70"/><line x1="230" y1="70" x2="270" y2="70"/>
+                        <line x1="190" y1="95" x2="230" y2="95"/><line x1="230" y1="95" x2="270" y2="95"/>
+                        <line x1="190" y1="115" x2="230" y2="115"/><line x1="230" y1="115" x2="270" y2="115"/>
+                        <line x1="190" y1="70" x2="190" y2="115"/><line x1="230" y1="70" x2="230" y2="115"/><line x1="270" y1="70" x2="270" y2="115"/>
+                    </g>
+                    <circle cx="190" cy="70" r="4" fill="var(--teal)"/><circle cx="230" cy="70" r="4" fill="var(--teal)"/><circle cx="270" cy="70" r="4" fill="var(--teal)"/>
+                    <circle cx="190" cy="95" r="4" fill="var(--teal)"/><circle cx="230" cy="95" r="4" fill="var(--teal)"/><circle cx="270" cy="95" r="4" fill="var(--teal)"/>
+                    <circle cx="190" cy="115" r="4" fill="var(--teal)"/><circle cx="230" cy="115" r="4" fill="var(--teal)"/><circle cx="270" cy="115" r="4" fill="var(--teal)"/>
+                    <text x="230" y="142" text-anchor="middle" font-size="9" fill="var(--teal)" font-weight="600">Peta teratur, mengikuti data</text>
+                    <!-- Bottom: alpha effect -->
+                    <text x="80" y="163" text-anchor="middle" font-size="11" fill="var(--rose)" font-weight="700">α terlalu besar</text>
+                    <rect x="20" y="170" width="120" height="45" rx="8" fill="#fff" stroke="var(--border)"/>
+                    <text x="80" y="196" text-anchor="middle" font-size="10" fill="var(--rose)">Bobot bergetar,</text>
+                    <text x="80" y="209" text-anchor="middle" font-size="10" fill="var(--rose)">tidak konvergen</text>
+                    <text x="230" y="163" text-anchor="middle" font-size="11" fill="var(--teal)" font-weight="700">α menurun tepat</text>
+                    <rect x="170" y="170" width="120" height="45" rx="8" fill="#fff" stroke="var(--border)"/>
+                    <text x="230" y="196" text-anchor="middle" font-size="10" fill="var(--teal)">Konvergen stabil</text>
+                    <text x="230" y="209" text-anchor="middle" font-size="10" fill="var(--teal)">ke solusi</text>
+                </svg>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== 15: VISUALISASI SOM ===== -->
+<section class="slide" style="--sc:var(--violet)">
+    <div class="slide-content">
+        <div class="sec rv">05 — Visualisasi</div>
+        <h2 class="rv d1">Cara Membaca Hasil SOM</h2>
+        <div class="three-col rv d2">
+            <div class="card accent" style="text-align:center;">
+                <svg viewBox="0 0 140 105" style="width:100%;height:auto;margin:0 auto .3em;">
+                    <!-- U-Matrix mini -->
+                    <rect x="10" y="10" width="25" height="25" fill="#1e293b" rx="3"/><rect x="37" y="10" width="25" height="25" fill="#374151" rx="3"/>
+                    <rect x="64" y="10" width="25" height="25" fill="#e8ecf4" rx="3"/><rect x="91" y="10" width="25" height="25" fill="#e8ecf4" rx="3"/>
+                    <rect x="10" y="37" width="25" height="25" fill="#374151" rx="3"/><rect x="37" y="37" width="25" height="25" fill="#1e293b" rx="3"/>
+                    <rect x="64" y="37" width="25" height="25" fill="#d0d5e1" rx="3"/><rect x="91" y="37" width="25" height="25" fill="#e8ecf4" rx="3"/>
+                    <rect x="10" y="64" width="25" height="25" fill="#e8ecf4" rx="3"/><rect x="37" y="64" width="25" height="25" fill="#d0d5e1" rx="3"/>
+                    <rect x="64" y="64" width="25" height="25" fill="#1e293b" rx="3"/><rect x="91" y="64" width="25" height="25" fill="#374151" rx="3"/>
+                    <text x="70" y="98" text-anchor="middle" font-size="9" fill="var(--text-muted)" font-weight="600">Gelap = batas cluster</text>
+                </svg>
+                <h3>U-Matrix</h3>
+                <p style="margin-top:.2em;">Menampilkan jarak antar neuron tetangga. Area gelap menunjukkan <strong>batas antar cluster</strong>.</p>
+            </div>
+            <div class="card accent" style="text-align:center;">
+                <svg viewBox="0 0 140 105" style="width:100%;height:auto;margin:0 auto .3em;">
+                    <!-- Component plane mini -->
+                    <rect x="10" y="10" width="25" height="25" fill="#dbeafe" rx="3"/><rect x="37" y="10" width="25" height="25" fill="#93c5fd" rx="3"/>
+                    <rect x="64" y="10" width="25" height="25" fill="#3b82f6" rx="3"/><rect x="91" y="10" width="25" height="25" fill="#1d4ed8" rx="3"/>
+                    <rect x="10" y="37" width="25" height="25" fill="#dbeafe" rx="3"/><rect x="37" y="37" width="25" height="25" fill="#bfdbfe" rx="3"/>
+                    <rect x="64" y="37" width="25" height="25" fill="#60a5fa" rx="3"/><rect x="91" y="37" width="25" height="25" fill="#3b82f6" rx="3"/>
+                    <rect x="10" y="64" width="25" height="25" fill="#eff6ff" rx="3"/><rect x="37" y="64" width="25" height="25" fill="#dbeafe" rx="3"/>
+                    <rect x="64" y="64" width="25" height="25" fill="#93c5fd" rx="3"/><rect x="91" y="64" width="25" height="25" fill="#60a5fa" rx="3"/>
+                    <text x="70" y="98" text-anchor="middle" font-size="9" fill="var(--text-muted)" font-weight="600">Heatmap per fitur</text>
+                </svg>
+                <h3>Component Plane</h3>
+                <p style="margin-top:.2em;">Satu heatmap per fitur input. Menunjukkan distribusi setiap fitur di peta.</p>
+            </div>
+            <div class="card accent" style="text-align:center;">
+                <svg viewBox="0 0 140 105" style="width:100%;height:auto;margin:0 auto .3em;">
+                    <!-- Hit map mini -->
+                    <rect x="10" y="10" width="25" height="25" fill="#f0fdf4" rx="3" stroke="var(--border)"/><circle cx="22" cy="22" r="3" fill="var(--teal)"/>
+                    <rect x="37" y="10" width="25" height="25" fill="#f0fdf4" rx="3" stroke="var(--border)"/><circle cx="49" cy="22" r="8" fill="var(--teal)" opacity=".7"/>
+                    <rect x="64" y="10" width="25" height="25" fill="#f0fdf4" rx="3" stroke="var(--border)"/>
+                    <rect x="91" y="10" width="25" height="25" fill="#f0fdf4" rx="3" stroke="var(--border)"/><circle cx="103" cy="22" r="5" fill="var(--teal)" opacity=".5"/>
+                    <rect x="10" y="37" width="25" height="25" fill="#f0fdf4" rx="3" stroke="var(--border)"/><circle cx="22" cy="49" r="10" fill="var(--teal)" opacity=".8"/>
+                    <rect x="37" y="37" width="25" height="25" fill="#f0fdf4" rx="3" stroke="var(--border)"/><circle cx="49" cy="49" r="4" fill="var(--teal)" opacity=".4"/>
+                    <rect x="64" y="37" width="25" height="25" fill="#f0fdf4" rx="3" stroke="var(--border)"/>
+                    <rect x="91" y="37" width="25" height="25" fill="#f0fdf4" rx="3" stroke="var(--border)"/><circle cx="103" cy="49" r="6" fill="var(--teal)" opacity=".6"/>
+                    <rect x="10" y="64" width="25" height="25" fill="#f0fdf4" rx="3" stroke="var(--border)"/><circle cx="22" cy="76" r="2" fill="var(--teal)" opacity=".3"/>
+                    <rect x="37" y="64" width="25" height="25" fill="#f0fdf4" rx="3" stroke="var(--border)"/>
+                    <rect x="64" y="64" width="25" height="25" fill="#f0fdf4" rx="3" stroke="var(--border)"/><circle cx="76" cy="76" r="7" fill="var(--teal)" opacity=".7"/>
+                    <rect x="91" y="64" width="25" height="25" fill="#f0fdf4" rx="3" stroke="var(--border)"/><circle cx="103" cy="76" r="4" fill="var(--teal)" opacity=".4"/>
+                    <text x="70" y="98" text-anchor="middle" font-size="9" fill="var(--text-muted)" font-weight="600">Besar = banyak data</text>
+                </svg>
+                <h3>Hit Map</h3>
+                <p style="margin-top:.2em;">Ukuran lingkaran menunjukkan berapa banyak data yang dipetakan ke neuron tersebut.</p>
+            </div>
+        </div>
+        <div class="card accent rv d3" style="margin-top:.6em;border-left-color:var(--violet);">
+            <h3>Cara Membaca Bersama</h3>
+            <p style="margin-top:.2em;">(1) Cari batas gelap di U-Matrix — ini adalah pemisah antar cluster. (2) Periksa Component Plane — apakah fitur berubah drastis di batas yang sama? Jika ya, fitur tersebut yang membedakan cluster. (3) Cek Hit Map — pastikan kedua sisi batas memiliki cukup data (bukan cluster kosong).</p>
+        </div>
+    </div>
+</section>
+
+<!-- ===== 11: APLIKASI ===== -->
+<section class="slide" style="--sc:var(--emerald)">
+    <div class="slide-content">
+        <div class="sec rv">06 — Aplikasi</div>
+        <h2 class="rv d1">Aplikasi SOM di Dunia Nyata</h2>
+        <div class="igrid rv d2">
+            <div class="icard"><div class="icon">&#127912;</div><h3>Color Clustering</h3><p>Mengelompokkan warna RGB menjadi peta gradasi warna yang terorganisir</p></div>
+            <div class="icard"><div class="icon">&#128200;</div><h3>Customer Segmentation</h3><p>Mengelompokkan pelanggan berdasarkan perilaku belanja dan demografi</p></div>
+            <div class="icard"><div class="icon">&#128196;</div><h3>Text Mining</h3><p>Clustering dokumen berdasarkan topik, visualisasi corpus besar</p></div>
+            <div class="icard"><div class="icon">&#128302;</div><h3>Anomaly Detection</h3><p>Deteksi fraud, intrusi jaringan, kegagalan mesin industri</p></div>
+            <div class="icard"><div class="icon">&#129516;</div><h3>Bioinformatika</h3><p>Klasifikasi sel, analisis ekspresi gen, peta protein</p></div>
+            <div class="icard"><div class="icon">&#128444;&#65039;</div><h3>Image Compression</h3><p>Vector quantization untuk kompresi gambar menggunakan codebook SOM</p></div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== 12: SOM vs LAINNYA ===== -->
+<section class="slide" style="--sc:var(--violet)">
+    <div class="slide-content">
+        <div class="sec rv">07 — Perbandingan</div>
+        <h2 class="rv d1">SOM vs Metode Lain</h2>
+        <table class="ctable rv d2">
+            <thead><tr><th style="width:22%;">Aspek</th><th style="width:26%;">SOM</th><th style="width:26%;">K-Means</th><th style="width:26%;">DBSCAN</th></tr></thead>
+            <tbody>
+                <tr><td><strong>Output</strong></td><td class="yes">Peta 2D topologi</td><td>Label cluster saja</td><td>Label cluster + noise</td></tr>
+                <tr><td><strong>Visualisasi</strong></td><td class="yes">Built-in (peta)</td><td class="no">Perlu terpisah</td><td class="no">Perlu terpisah</td></tr>
+                <tr><td><strong>Topologi</strong></td><td class="yes">Dipertahankan</td><td class="no">Tidak ada (lokal)</td><td class="no">Tidak ada</td></tr>
+                <tr><td><strong>Jumlah cluster</strong></td><td>Dari grid size</td><td class="no">Tentukan K</td><td class="yes">Otomatis</td></tr>
+                <tr><td><strong>Noise handling</strong></td><td class="no">Tidak eksplisit</td><td class="no">Tidak ada</td><td class="yes">Built-in</td></tr>
+                <tr><td><strong>Kecepatan</strong></td><td class="no">Lambat (iteratif, tapi parallelizable)</td><td class="yes">Cepat</td><td>Sedang</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ===== 13: KELEBIHAN KEKURANGAN ===== -->
+<section class="slide" style="--sc:var(--violet)">
+    <div class="slide-content">
+        <div class="sec rv">07 — Perbandingan</div>
+        <h2 class="rv d1">Kelebihan & Kekurangan SOM</h2>
+        <div class="two-col" style="margin-top:.4em;">
+            <div class="procon pro rv d2"><h3>Kelebihan</h3><ul>
+                <li>Visualisasi data berdimensi tinggi ke dalam peta 2D yang intuitif</li>
+                <li>Mempertahankan hubungan topologi (data mirip tetap berdekatan)</li>
+                <li>Mampu menangkap hubungan non-linear antar fitur (berbeda dari PCA yang hanya menangkap hubungan linear)</li>
+                <li>Unsupervised — tidak butuh label data</li>
+                <li>Menghasilkan clustering sekaligus dimensionality reduction</li>
+            </ul></div>
+            <div class="procon con rv d3"><h3>Kekurangan</h3><ul>
+                <li>Komputasi mahal, terutama untuk dataset besar dan dimensi tinggi</li>
+                <li>Hasil non-deterministik (tergantung inisialisasi acak) — solusi: jalankan beberapa kali dan pilih hasil dengan QE terendah</li>
+                <li>Ukuran grid harus ditentukan manual — sulit menentukan optimal</li>
+                <li>Tidak bisa menangani data kategorikal secara langsung (solusi: encode one-hot atau gunakan metrik jarak khusus)</li>
+                <li>Tidak ada deteksi noise/outlier secara eksplisit</li>
+            </ul></div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== 14: KODE PYTHON PIPELINE LENGKAP ===== -->
+<section class="slide" style="--sc:var(--emerald)">
+    <div class="slide-content">
+        <div class="sec rv">08 — Implementasi</div>
+        <h2 class="rv d1">Kode Python: Pipeline Lengkap SOM → Cluster</h2>
+        <div class="two-col">
+            <div>
+                <div class="codeblock rv d2" style="font-size:clamp(.75rem,1.1vw,.95rem);"><span class="kw">from</span> minisom <span class="kw">import</span> MiniSom
+<span class="kw">from</span> sklearn.cluster <span class="kw">import</span> KMeans
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+<span class="cm"># ── Tahap 1: Train SOM ──</span>
+<span class="var">grid_x</span>, <span class="var">grid_y</span> = <span class="num">10</span>, <span class="num">10</span>
+<span class="var">som</span> = <span class="fn">MiniSom</span>(<span class="var">grid_x</span>, <span class="var">grid_y</span>, data.shape[<span class="num">1</span>],
+    <span class="var">sigma</span>=<span class="num">1.5</span>, <span class="var">learning_rate</span>=<span class="num">0.5</span>)
+<span class="var">som</span>.<span class="fn">random_weights_init</span>(data)
+<span class="var">som</span>.<span class="fn">train_random</span>(data, <span class="num">5000</span>)
+
+<span class="cm"># ── Tahap 2: Cluster neuron ──</span>
+<span class="var">weights</span> = <span class="var">som</span>.<span class="fn">get_weights</span>()
+<span class="var">codebook</span> = <span class="var">weights</span>.<span class="fn">reshape</span>(<span class="num">-1</span>, data.shape[<span class="num">1</span>])
+<span class="var">km</span> = <span class="fn">KMeans</span>(<span class="var">n_clusters</span>=<span class="num">3</span>)
+<span class="var">neuron_labels</span> = <span class="var">km</span>.<span class="fn">fit_predict</span>(<span class="var">codebook</span>)
+
+<span class="cm"># ── Tahap 3: Assign label ke data ──</span>
+<span class="var">labels</span> = []
+<span class="kw">for</span> x <span class="kw">in</span> data:
+    bmu = <span class="var">som</span>.<span class="fn">winner</span>(x)  <span class="cm"># (row, col)</span>
+    <span class="cm"># Konversi posisi grid 2D ke index 1D</span>
+    idx = bmu[<span class="num">0</span>] * <span class="var">grid_y</span> + bmu[<span class="num">1</span>]
+    <span class="var">labels</span>.<span class="fn">append</span>(<span class="var">neuron_labels</span>[idx])
+
+<span class="fn">print</span>(<span class="str">"Cluster labels:"</span>, <span class="var">labels</span>)</div>
+            </div>
+            <div>
+                <div class="card accent rv d3" style="margin-bottom:.4em;border-left-color:var(--indigo);">
+                    <h3>Tahap 1: Train SOM</h3>
+                    <p style="margin-top:.2em;">Grid 10×10 = 100 neuron. Training 5000 iterasi. Setiap neuron menyimpan vektor bobot.</p>
+                </div>
+                <div class="card accent rv d4" style="margin-bottom:.4em;border-left-color:var(--rose);">
+                    <h3>Tahap 2: Cluster Neuron</h3>
+                    <p style="margin-top:.2em;"><code>get_weights()</code> → reshape menjadi (100, n_fitur) → <strong>K-Means</strong> mengelompokkan 100 neuron ke 3 cluster. Ini tahap krusial!</p>
+                </div>
+                <div class="card accent rv d5" style="margin-bottom:.4em;border-left-color:var(--teal);">
+                    <h3>Tahap 3: Assign Label</h3>
+                    <p style="margin-top:.2em;">Setiap data → cari BMU → ambil label cluster BMU tersebut. <strong>Ini output akhir clustering!</strong></p>
+                </div>
+                <div class="card rv d6" style="border:2px solid var(--emerald);border-radius:12px;">
+                    <h3 style="color:var(--emerald);">Referensi Akademik</h3>
+                    <p style="margin-top:.2em;font-size:var(--sm);">Vesanto &amp; Alhoniemi (2000). <em>"Clustering of the Self-Organizing Map."</em> IEEE Trans. Neural Networks, 11(3):586-600.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== INTERACTIVE SOM DEMO ===== -->
+<section class="slide" style="--sc:var(--blue)">
+    <div class="slide-content">
+        <div class="sec rv">09 — Demo Interaktif</div>
+        <h2 class="rv d1">SOM Training: Simulasi Langsung</h2>
+        <div class="two-col viz">
+            <div>
+                <div class="card accent rv d2" style="margin-bottom:.5em;">
+                    <h3>Kontrol Simulasi</h3>
+                    <div style="display:flex;gap:.5em;flex-wrap:wrap;margin:.4em 0;">
+                        <button onclick="somDemo.reset()" style="padding:.35em .8em;border-radius:6px;border:1px solid var(--border);background:var(--bg-alt);cursor:pointer;font-family:var(--font-m);font-size:var(--sm);font-weight:600;">Reset</button>
+                        <button onclick="somDemo.step()" style="padding:.35em .8em;border-radius:6px;border:1px solid var(--border);background:var(--bg-alt);cursor:pointer;font-family:var(--font-m);font-size:var(--sm);font-weight:600;">Step</button>
+                        <button onclick="somDemo.togglePlay()" id="somPlayBtn" style="padding:.35em .8em;border-radius:6px;border:1px solid var(--blue);background:var(--blue);color:#fff;cursor:pointer;font-family:var(--font-m);font-size:var(--sm);font-weight:600;">Play</button>
+                    </div>
+                    <div style="margin-top:.3em;">
+                        <label style="font-size:var(--sm);color:var(--text-muted);">Learning Rate: <strong id="somAlphaVal">0.50</strong></label>
+                        <input type="range" id="somAlpha" min="5" max="100" value="50" style="width:100%;" oninput="document.getElementById('somAlphaVal').textContent=(this.value/100).toFixed(2)">
+                    </div>
+                    <div style="margin-top:.2em;">
+                        <label style="font-size:var(--sm);color:var(--text-muted);">Radius (σ): <strong id="somSigmaVal">2.0</strong></label>
+                        <input type="range" id="somSigma" min="5" max="40" value="20" style="width:100%;" oninput="document.getElementById('somSigmaVal').textContent=(this.value/10).toFixed(1)">
+                    </div>
+                </div>
+                <div class="state-box rv d3" id="somStats">
+                    <span><span class="label">Iterasi:</span> <span class="val" id="somIter">0</span></span>
+                    <span><span class="label">QE:</span> <span class="val" id="somQE">—</span></span>
+                </div>
+                <p class="rv d4" style="font-size:var(--sm);color:var(--text-muted);margin-top:.4em;">Amati bagaimana grid neuron (biru) secara bertahap <strong>meregang menutupi</strong> titik-titik data (abu-abu). Klik Step untuk maju satu iterasi, atau Play untuk animasi otomatis.</p>
+            </div>
+            <div class="rv d2" style="display:flex;align-items:center;justify-content:center;">
+                <canvas id="somCanvas" width="460" height="380" style="width:100%;background:var(--bg-alt);border:1px solid var(--border);border-radius:14px;"></canvas>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== ITERASI KE-2 MANUAL ===== -->
+<section class="slide" style="--sc:var(--amber)">
+    <div class="slide-content">
+        <div class="sec rv">04 — Perhitungan Manual (Lanjutan)</div>
+        <h2 class="rv d1">Iterasi 2: Input Baru x₂ = (1.0, 3.0)</h2>
+        <div class="two-col viz">
+            <div>
+                <p class="rv d2" style="margin-bottom:.3em;">Gunakan <strong>bobot hasil iterasi 1</strong>. Sekarang α turun menjadi <strong>0.4</strong>, σ = <strong>0.55</strong>.</p>
+                <div class="card accent rv d3" style="margin-bottom:.4em;">
+                    <h3>Langkah 1: Cari BMU</h3>
+                    <div class="calc">d(x₂, N1) = √[(1−0.77)² + (3−0.90)²]</div>
+                    <div class="calc">= √[0.053 + 4.41] = <strong>2.113</strong></div>
+                    <div class="calc" style="margin-top:.2em;">d(x₂, N2) = √[(1−0.63)² + (3−0.84)²]</div>
+                    <div class="calc">= √[0.137 + 4.666] = <strong>2.192</strong></div>
+                    <div class="calc" style="margin-top:.2em;">d(x₂, N3) = √[(1−1.98)² + (3−0.66)²]</div>
+                    <div class="calc">= √[0.960 + 5.476] = <strong>2.538</strong></div>
+                    <div class="calc" style="margin-top:.2em;">d(x₂, N4) = √[(1−0.92)² + (3−0.81)²]</div>
+                    <div class="calc">= √[0.006 + 4.796] = <strong>2.192</strong></div>
+                </div>
+                <div class="state-box rv d4"><span><span class="label">BMU:</span> <span class="val">N1 (jarak 2.113, terkecil!)</span></span></div>
+            </div>
+            <div class="rv d3" style="display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 260 252" style="width:100%;background:var(--bg-alt);border:1px solid var(--border);border-radius:14px;">
+                    <text x="130" y="20" text-anchor="middle" font-size="12" fill="var(--text-muted)" font-weight="600">Iterasi 2: BMU Berubah!</text>
+                    <!-- Grid -->
+                    <line x1="70" y1="70" x2="190" y2="70" stroke="var(--border)" stroke-width="2"/>
+                    <line x1="70" y1="160" x2="190" y2="160" stroke="var(--border)" stroke-width="2"/>
+                    <line x1="70" y1="70" x2="70" y2="160" stroke="var(--border)" stroke-width="2"/>
+                    <line x1="190" y1="70" x2="190" y2="160" stroke="var(--border)" stroke-width="2"/>
+                    <!-- N1 = BMU -->
+                    <circle cx="70" cy="70" r="16" fill="var(--amber)"/><circle cx="70" cy="70" r="22" fill="none" stroke="var(--accent)" stroke-width="3"/>
+                    <text x="70" y="75" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">N1</text>
+                    <text x="70" y="42" text-anchor="middle" font-size="11" fill="var(--amber)" font-weight="700">BMU! d=2.113</text>
+                    <!-- N2 -->
+                    <circle cx="190" cy="70" r="14" fill="var(--indigo)" opacity=".4"/>
+                    <text x="190" y="75" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">N2</text>
+                    <text x="190" y="50" text-anchor="middle" font-size="10" fill="var(--text-muted)">d=2.192</text>
+                    <!-- N3 -->
+                    <circle cx="70" cy="160" r="14" fill="var(--indigo)" opacity=".4"/>
+                    <text x="70" y="165" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">N3</text>
+                    <text x="70" y="188" text-anchor="middle" font-size="10" fill="var(--text-muted)">d=2.538</text>
+                    <!-- N4 -->
+                    <circle cx="190" cy="160" r="14" fill="var(--indigo)" opacity=".4"/>
+                    <text x="190" y="165" text-anchor="middle" font-size="13" fill="#fff" font-weight="700">N4</text>
+                    <text x="190" y="188" text-anchor="middle" font-size="10" fill="var(--text-muted)">d=2.192</text>
+                    <!-- Input -->
+                    <circle cx="50" cy="30" r="10" fill="var(--rose)"/>
+                    <text x="50" y="35" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">x₂</text>
+                    <line x1="55" y1="37" x2="65" y2="62" stroke="var(--amber)" stroke-width="2" stroke-dasharray="4 3"/>
+                    <!-- Observation -->
+                    <text x="130" y="218" text-anchor="middle" font-size="11" fill="var(--text-sub)">BMU berubah ke N1!</text>
+                    <text x="130" y="234" text-anchor="middle" font-size="10" fill="var(--text-muted)">Input berbeda → pemenang berbeda</text>
+                </svg>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== ITERASI 2: UPDATE ===== -->
+<section class="slide" style="--sc:var(--amber)">
+    <div class="slide-content">
+        <div class="sec rv">04 — Perhitungan Manual (Lanjutan)</div>
+        <h2 class="rv d1">Iterasi 2: Update Bobot</h2>
+        <div class="two-col viz">
+            <div>
+                <p class="rv d2" style="margin-bottom:.3em;">BMU = N1, α = 0.4, σ = 0.55 → 2σ² = 0.605</p>
+                <div class="card accent rv d3" style="margin-bottom:.4em;">
+                    <h3>Neighborhood Values</h3>
+                    <div class="calc">h(N1,N1) = exp(0) = <strong>1.000</strong></div>
+                    <div class="calc">h(N2,N1) = exp(−1/0.605) = <strong>0.192</strong></div>
+                    <div class="calc">h(N3,N1) = exp(−1/0.605) = <strong>0.192</strong></div>
+                    <div class="calc">h(N4,N1) = exp(−2/0.605) = <strong>0.037</strong></div>
+                </div>
+                <div class="card accent rv d4" style="margin-bottom:.4em;">
+                    <h3>Update N1 (BMU, h=1.000)</h3>
+                    <div class="calc">w₁ = (0.77, 0.90) + 0.4 × 1.0 × (0.23, 2.10)</div>
+                    <div class="calc">= (0.77+0.092, 0.90+0.840) = <span class="ok"><strong>(0.862, 1.740)</strong></span></div>
+                </div>
+                <div class="card accent rv d5">
+                    <h3>Update N2 (h=0.192)</h3>
+                    <div class="calc">w₂ = (0.63, 0.84) + 0.4 × 0.192 × (0.37, 2.16)</div>
+                    <div class="calc">= (0.63+0.028, 0.84+0.166) = <strong>(0.658, 1.006)</strong></div>
+                </div>
+            </div>
+            <div>
+                <table class="dtable rv d3">
+                    <thead><tr><th>Neuron</th><th>Sebelum It.2</th><th>Sesudah It.2</th><th>Δ</th></tr></thead>
+                    <tbody>
+                        <tr style="background:#fffbeb;"><td><strong style="color:var(--amber);">N1 (BMU)</strong></td><td>(0.77, 0.90)</td><td><strong>(0.86, 1.74)</strong></td><td><strong style="color:var(--amber);">0.85</strong></td></tr>
+                        <tr><td>N2</td><td>(0.63, 0.84)</td><td>(0.66, 1.01)</td><td>0.17</td></tr>
+                        <tr><td>N3</td><td>(1.98, 0.66)</td><td>(1.90, 0.84)</td><td>0.19</td></tr>
+                        <tr><td>N4</td><td>(0.92, 0.81)</td><td>(0.92, 0.84)</td><td>0.03</td></tr>
+                    </tbody>
+                </table>
+                <div class="card accent rv d4" style="margin-top:.5em;">
+                    <h3>Pola yang Muncul</h3>
+                    <ul class="blist" style="margin-top:.3em;">
+                        <li>Iterasi 1: Input (3,1) → <strong>N3</strong> jadi BMU, bergerak ke kanan-bawah</li>
+                        <li>Iterasi 2: Input (1,3) → <strong>N1</strong> jadi BMU, bergerak ke kiri-atas</li>
+                        <li>Setiap neuron mulai <strong>"spesialisasi"</strong> pada area data tertentu</li>
+                        <li>Dengan α &amp; σ menurun → pergerakan semakin <strong>halus &amp; lokal</strong></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== LATIHAN KAGGLE ===== -->
+<section class="slide" style="--sc:var(--emerald)">
+    <div class="slide-content">
+        <div class="sec rv">10 — Latihan &amp; Sumber Belajar</div>
+        <h2 class="rv d1">Clustering Challenges: Kaggle &amp; Dataset Populer</h2>
+        <div class="two-col viz">
+            <div>
+                <div class="card accent rv d2" style="margin-bottom:.4em;border-left-color:var(--amber);">
+                    <h3>Dataset Kaggle Terbaik untuk Clustering</h3>
+                    <table class="dtable" style="margin-top:.3em;font-size:var(--sm);">
+                        <thead><tr><th>Dataset</th><th>Ukuran</th><th>Metode</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>Credit Card Clustering</strong></td><td>9K, 18 fitur</td><td>K-Means, GMM, DBSCAN</td></tr>
+                            <tr><td><strong>Mall Customer Segmentation</strong></td><td>200, 5 fitur</td><td>K-Means, SOM</td></tr>
+                            <tr><td><strong>Spotify Tracks</strong></td><td>114K, 20 fitur</td><td>K-Means, GMM + t-SNE</td></tr>
+                            <tr><td><strong>Wine Clustering</strong></td><td>178, 13 fitur</td><td>K-Means, Hierarchical</td></tr>
+                            <tr><td><strong>Country Data (socio-econ)</strong></td><td>167, 10 fitur</td><td>K-Means + PCA</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card accent rv d3" style="border-left-color:var(--rose);">
+                    <h3>Kompetisi Clustering di Kaggle</h3>
+                    <ul class="blist" style="margin-top:.3em;">
+                        <li><strong>TPS Jul 2022</strong> — 98K data manufacturing, 29 fitur. Kompetisi clustering terbesar di Kaggle</li>
+                        <li><strong>K-Means Heart Disease</strong> — clustering data jantung, beginner-friendly</li>
+                        <li><strong>Clustering 2024</strong> — kompetisi komunitas terbaru</li>
+                    </ul>
+                </div>
+            </div>
+            <div>
+                <div class="card accent rv d2" style="margin-bottom:.4em;border-left-color:var(--blue);">
+                    <h3>Benchmark Dataset Klasik (UCI/Synthetic)</h3>
+                    <table class="dtable" style="margin-top:.3em;font-size:var(--sm);">
+                        <thead><tr><th>Dataset</th><th>Sampel</th><th>Kesulitan</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>Iris</strong> (UCI)</td><td>150</td><td>Pemula</td></tr>
+                            <tr><td><strong>make_moons</strong> (sklearn)</td><td>custom</td><td>Menengah</td></tr>
+                            <tr><td><strong>FCPS Chainlink</strong></td><td>1000</td><td>Sulit</td></tr>
+                            <tr><td><strong>Fashion-MNIST</strong></td><td>70K</td><td>Lanjut</td></tr>
+                            <tr><td><strong>UCR Time Series</strong></td><td>128 set</td><td>Riset</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card accent rv d3" style="border-left-color:var(--teal);">
+                    <h3>Notebook SOM di Kaggle</h3>
+                    <ul class="blist" style="margin-top:.3em;">
+                        <li><strong>Visualizing SOMs</strong> — U-Matrix &amp; hit map dengan Iris</li>
+                        <li><strong>SOM for Anomaly Detection</strong> — deteksi outlier</li>
+                        <li><strong>Kohonen SOM on MNIST</strong> — SOM untuk gambar</li>
+                        <li><strong>Clustering Provinsi Indonesia</strong> — K-Means data BPS</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== PLATFORM & RESOURCES LAIN ===== -->
+<section class="slide" style="--sc:var(--violet)">
+    <div class="slide-content">
+        <div class="sec rv">10 — Latihan &amp; Sumber Belajar</div>
+        <h2 class="rv d1">Clustering Challenges di Luar Kaggle</h2>
+        <div class="two-col viz">
+            <div>
+                <div class="card accent rv d2" style="margin-bottom:.4em;border-left-color:var(--blue);">
+                    <h3>Platform Kompetisi Internasional</h3>
+                    <ul class="blist" style="margin-top:.3em;">
+                        <li><strong>DrivenData</strong> — "Unsupervised Wisdom": clustering narasi medis darurat (NLP + DBSCAN + UMAP)</li>
+                        <li><strong>AIcrowd</strong> — Speaker Identification (cluster 10 YouTubers); Environment Classification (cuaca self-driving car)</li>
+                        <li><strong>HackerEarth</strong> — Asset Clustering (3000+ peserta); Future Datathon (clustering pelanggan Big Bazaar)</li>
+                        <li><strong>MachineHack</strong> — Hierarchical Clustering UPGMA (practice challenge, masih aktif)</li>
+                        <li><strong>CodaLab</strong> — Evaluasi algoritma text clustering</li>
+                    </ul>
+                </div>
+                <div class="card accent rv d3" style="border-left-color:var(--teal);">
+                    <h3>Kursus Gratis (Interaktif)</h3>
+                    <ul class="blist" style="margin-top:.3em;">
+                        <li><strong>Google ML Clustering Course</strong> — developers.google.com/machine-learning/clustering — gratis, lengkap!</li>
+                        <li><strong>Coursera (Andrew Ng)</strong> — Unsupervised Learning course, assignment K-Means + image compression</li>
+                        <li><strong>Stanford CS229</strong> — Problem Set #3: implementasi K-Means</li>
+                        <li><strong>scikit-learn Examples</strong> — perbandingan 11 algoritma clustering side-by-side</li>
+                    </ul>
+                </div>
+            </div>
+            <div>
+                <div class="card accent rv d2" style="margin-bottom:.4em;border-left-color:var(--amber);">
+                    <h3>Kompetisi &amp; Sumber Indonesia</h3>
+                    <ul class="blist" style="margin-top:.3em;">
+                        <li><strong>Satria Data (Kemdikbud)</strong> — Big Data Challenge: clustering adalah salah satu tipe soal!</li>
+                        <li><strong>Gemastik</strong> — kategori Data Mining, bisa pakai clustering</li>
+                        <li><strong>COMPFEST DSA (UI)</strong> — kurikulum eksplisit K-Means &amp; Hierarchical Clustering</li>
+                        <li><strong>DSC ITB</strong> — kompetisi data science dari ITB</li>
+                    </ul>
+                </div>
+                <div class="card accent rv d3" style="margin-bottom:.4em;border-left-color:var(--rose);">
+                    <h3>Platform Belajar Indonesia</h3>
+                    <ul class="blist" style="margin-top:.3em;">
+                        <li><strong>Dicoding</strong> — "Belajar ML untuk Pemula": latihan K-Means, DBSCAN, Elbow Method (120 menit)</li>
+                        <li><strong>DQLab</strong> — tutorial K-Means, Hierarchical, GMM dengan live code editor</li>
+                        <li><strong>BPS Open Data</strong> (bps.go.id) — data provinsi ideal untuk clustering</li>
+                        <li><strong>Satu Data Indonesia</strong> (data.go.id) — CSV kesehatan, retail, curah hujan</li>
+                    </ul>
+                </div>
+                <div class="card accent rv d4" style="border-left-color:var(--violet);">
+                    <h3>Referensi Perhitungan SOM</h3>
+                    <ul class="blist" style="margin-top:.3em;">
+                        <li><strong>ITS Surabaya</strong> — perhitungan SOM Kohonen lengkap (Bahasa Indonesia)</li>
+                        <li><strong>BINUS &amp; Algoritma.id</strong> — tutorial konsep SOM</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== RINGKASAN ===== -->
+<section class="slide" style="--sc:var(--indigo)">
+    <div class="slide-content" style="align-items:center;text-align:center;">
+        <div class="sec rv">Ringkasan</div>
+        <h2 class="rv d1">Self-Organizing Maps: Peta Pintar untuk Data Kompleks</h2>
+        <div class="three-col rv d2" style="margin-top:var(--gap);">
+            <div class="card accent" style="text-align:center;">
+                <div style="font-size:clamp(1.5rem,2.5vw,2rem);font-weight:800;color:var(--accent);">2D</div>
+                <p>Memproyeksikan data berdimensi tinggi ke peta 2D yang mudah dipahami</p>
+            </div>
+            <div class="card accent" style="text-align:center;">
+                <div style="font-size:clamp(1.5rem,2.5vw,2rem);font-weight:800;color:var(--accent);">BMU</div>
+                <p>Neuron pemenang dan tetangganya belajar dari setiap input data</p>
+            </div>
+            <div class="card accent" style="text-align:center;">
+                <div style="font-size:clamp(1.5rem,2.5vw,2rem);font-weight:800;color:var(--accent);">&#x1f9e0;</div>
+                <p>Terinspirasi oleh cara otak mengorganisir informasi sensorik</p>
+            </div>
+        </div>
+        <div class="formula rv d3" style="margin-top:var(--gap);">w<sub>j</sub>(t+1) = w<sub>j</sub>(t) + α(t) · h(j, BMU, t) · [x(t) − w<sub>j</sub>(t)]</div>
+        <p class="rv d4" style="margin-top:var(--gap);color:var(--text-muted);"><strong>pip install minisom</strong> &nbsp;|&nbsp; Grid size ≈ 5√n &nbsp;|&nbsp; α dan σ menurun seiring iterasi</p>
+    </div>
+</section>
+
+<script src="slides-core.js"></script>
+<script>
+// ===== Interactive SOM Demo =====
+const somDemo=(()=>{
+const cv=document.getElementById('somCanvas');
+if(!cv)return{reset:()=>{},step:()=>{},togglePlay:()=>{}};
+const cx=cv.getContext('2d');
+const W=cv.width,H=cv.height;
+let neurons=[],data=[],iter=0,playing=false,animId=null;
+const GR=5,GC=5; // 5x5 grid
+function genData(){
+    data=[];
+    // 3 clusters
+    const clusters=[[100,80],[350,280],[120,300]];
+    clusters.forEach(([cx,cy])=>{for(let i=0;i<15;i++)data.push([cx+(Math.random()-.5)*100,cy+(Math.random()-.5)*80]);});
+}
+function initNeurons(){
+    neurons=[];
+    for(let r=0;r<GR;r++)for(let c=0;c<GC;c++){
+        neurons.push({gr:r,gc:c,x:W/2+(Math.random()-.5)*60,y:H/2+(Math.random()-.5)*60});
+    }
+}
+function getAlpha(){return parseFloat(document.getElementById('somAlpha').value)/100;}
+function getSigma(){return parseFloat(document.getElementById('somSigma').value)/10;}
+function dist(a,b){return Math.sqrt((a[0]-b[0])**2+(a[1]-b[1])**2);}
+function gridDist(n1,n2){return(n1.gr-n2.gr)**2+(n1.gc-n2.gc)**2;}
+function trainStep(){
+    const d=data[Math.floor(Math.random()*data.length)];
+    const alpha0=getAlpha(),sigma=getSigma();
+    const decay=Math.exp(-iter/200);
+    const alpha=alpha0*decay;
+    const sig=Math.max(sigma*decay,0.3);
+    let bmu=0,bmuD=Infinity;
+    neurons.forEach((n,i)=>{const dd=dist([n.x,n.y],d);if(dd<bmuD){bmuD=dd;bmu=i;}});
+    const b=neurons[bmu];
+    neurons.forEach(n=>{
+        const gd=gridDist(n,b);
+        const h=Math.exp(-gd/(2*sig*sig));
+        n.x+=alpha*h*(d[0]-n.x);
+        n.y+=alpha*h*(d[1]-n.y);
+    });
+    iter++;
+    document.getElementById('somIter').textContent=iter;
+    // Quantization error
+    let qe=0;
+    data.forEach(d=>{let mn=Infinity;neurons.forEach(n=>{const dd=dist([n.x,n.y],d);if(dd<mn)mn=dd;});qe+=mn;});
+    document.getElementById('somQE').textContent=(qe/data.length).toFixed(1);
+}
+function draw(){
+    cx.clearRect(0,0,W,H);
+    // Data points
+    data.forEach(d=>{cx.beginPath();cx.arc(d[0],d[1],4,0,Math.PI*2);cx.fillStyle='rgba(133,144,165,0.35)';cx.fill();});
+    // Grid lines
+    cx.strokeStyle='rgba(37,99,235,0.3)';cx.lineWidth=1.5;
+    for(let r=0;r<GR;r++)for(let c=0;c<GC;c++){
+        const n=neurons[r*GC+c];
+        if(c<GC-1){const n2=neurons[r*GC+c+1];cx.beginPath();cx.moveTo(n.x,n.y);cx.lineTo(n2.x,n2.y);cx.stroke();}
+        if(r<GR-1){const n2=neurons[(r+1)*GC+c];cx.beginPath();cx.moveTo(n.x,n.y);cx.lineTo(n2.x,n2.y);cx.stroke();}
+    }
+    // Neurons
+    neurons.forEach(n=>{cx.beginPath();cx.arc(n.x,n.y,5,0,Math.PI*2);cx.fillStyle='#2563eb';cx.fill();cx.strokeStyle='#fff';cx.lineWidth=1.5;cx.stroke();});
+}
+function animate(){
+    if(!playing)return;
+    for(let i=0;i<3;i++)trainStep();
+    draw();
+    animId=requestAnimationFrame(animate);
+}
+return{
+    reset(){iter=0;playing=false;document.getElementById('somPlayBtn').textContent='Play';if(animId)cancelAnimationFrame(animId);genData();initNeurons();draw();document.getElementById('somIter').textContent='0';document.getElementById('somQE').textContent='—';},
+    step(){trainStep();draw();},
+    togglePlay(){playing=!playing;document.getElementById('somPlayBtn').textContent=playing?'Pause':'Play';if(playing)animate();else if(animId)cancelAnimationFrame(animId);}
+};
+})();
+if(somDemo.reset)somDemo.reset();
+</script>
+</body>
+</html>

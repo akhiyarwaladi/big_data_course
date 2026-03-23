@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JUDUL TOPIK — Materi Lengkap</title>
+
+    <!-- Google Fonts (shared across all slides) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Shared Design System -->
+    <link rel="stylesheet" href="slides-core.css">
+
+    <style>
+    /* ==========================================================
+       STYLE KHUSUS TOPIK INI
+       Tambahkan hanya style yang unik untuk slide deck ini.
+       Semua komponen umum sudah ada di slides-core.css.
+       ========================================================== */
+
+    /* Warna cluster khusus topik ini (override sesuai kebutuhan) */
+    :root {
+        --c1: #2563eb;    /* Cluster 1 */
+        --c2: #e11d48;    /* Cluster 2 */
+        --c3: #0d9488;    /* Cluster 3 */
+        --c4: #d97706;    /* Cluster 4 */
+    }
+
+    /* Contoh: style hero/motivasi slide (dark background)
+       Setiap topik biasanya punya visual hero yang unik.
+       Copy pattern dari slide yang sudah ada, lalu modifikasi. */
+
+    /* Contoh: style untuk interactive demo (jika ada) */
+    </style>
+</head>
+<body>
+
+<!-- Fixed UI Elements -->
+<div class="progress-bar" id="progressBar"></div>
+<nav class="nav-dots" id="navDots"></nav>
+<button class="fs-btn" id="fsBtn" title="Fullscreen (F)" onclick="toggleFS()">
+    <svg viewBox="0 0 24 24" id="fsIcon"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>
+</button>
+
+
+<!-- ===================================================================
+     PANDUAN KOMPONEN YANG TERSEDIA (dari slides-core.css)
+     ===================================================================
+
+     LAYOUT:
+       .slide                    — Container per-slide (full viewport)
+       .slide.fixed              — Slide fixed-height (untuk demo interaktif)
+       .slide-content            — Area konten di dalam slide
+       .two-col                  — Grid 2 kolom
+       .two-col.viz              — Grid 2 kolom stretch (untuk visualisasi)
+       .three-col                — Grid 3 kolom
+       .four-col                 — Grid 4 kolom
+
+     SECTION LABEL:
+       .sec                      — Label bagian (misal: "01 — Pengenalan")
+       Gunakan style="--sc:var(--blue)" pada .slide untuk warna aksen
+
+     CARDS:
+       .card                     — Kartu dengan background abu
+       .card.accent              — Kartu dengan border kiri berwarna
+       .glass-card               — Kartu transparan untuk dark slides
+
+     LISTS:
+       .blist                    — Bullet list dengan dot berwarna
+       .steps > .step > .step-n  — Numbered steps
+
+     TABLES:
+       .dtable                   — Data table (header berwarna, monospace)
+       .ctable                   — Comparison table (header abu)
+         .yes / .no              — Warna hijau/merah untuk sel
+
+     CODE:
+       .codeblock                — Block kode gelap
+         .kw .fn .str .num .cm .var — Syntax highlighting
+
+     FORMULA:
+       .formula                  — Blok rumus matematika
+
+     PRO/CON:
+       .procon.pro / .procon.con — Kelebihan dan kekurangan
+
+     ICONS:
+       .igrid > .icard           — Grid kartu icon (auto-fit)
+         .icon / h3 / p          — Emoji, judul, deskripsi
+
+     MISC:
+       .state-box                — Status box (untuk iterasi/tracking)
+       .viz-legend               — Legend untuk visualisasi
+       .slide-footer             — Footer kecil di bawah slide
+       .stat-bar > .stat-item    — Counter statistik (untuk hero slides)
+       .app-grid                 — Grid 2x2 untuk aplikasi/use-case
+
+     ANIMATIONS:
+       .rv                       — Reveal on scroll (opacity + translateY)
+       .d1 .d2 .d3 .d4 .d5 .d6  — Delay bertingkat (stagger)
+
+     =================================================================== -->
+
+
+<!-- ===== SLIDE 1: TITLE ===== -->
+<section class="slide" style="background:linear-gradient(135deg,#f0f4ff 0%,#fff 50%,#edfcfa 100%);">
+    <div class="slide-content" style="align-items:center;text-align:center;">
+        <div class="rv" style="font-family:var(--font-m);font-size:var(--body);color:var(--text-muted);letter-spacing:.15em;text-transform:uppercase;margin-bottom:clamp(.5rem,1.5vh,1rem);">Materi Clustering</div>
+        <h1 class="rv d1">Nama Algoritma</h1>
+        <p class="rv d2" style="font-size:clamp(1.3rem,2.5vw,1.8rem);color:var(--text-muted);margin-top:clamp(.5rem,1vh,1rem);">Subtitle atau deskripsi singkat<br>tentang topik ini</p>
+    </div>
+</section>
+
+
+<!-- ===== SLIDE 2: KONTEN CONTOH ===== -->
+<section class="slide" style="--sc:var(--blue)">
+    <div class="slide-content">
+        <div class="sec rv">01 — Pengenalan</div>
+        <h2 class="rv d1">Judul Slide</h2>
+        <div class="two-col viz">
+            <div>
+                <p class="rv d2">Paragraf penjelasan di sisi kiri.</p>
+                <div class="card accent rv d3">
+                    <h3>Sub-topik</h3>
+                    <ul class="blist">
+                        <li>Poin pertama</li>
+                        <li>Poin kedua</li>
+                        <li>Poin ketiga</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="rv d3 viz-col">
+                <!-- SVG visualisasi di sini -->
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ===== SLIDE 3: STEPS EXAMPLE ===== -->
+<section class="slide" style="--sc:var(--teal)">
+    <div class="slide-content">
+        <div class="sec rv">02 — Algoritma</div>
+        <h2 class="rv d1">Langkah-langkah</h2>
+        <div class="steps rv d2">
+            <div class="step"><div class="step-n">1</div><p>Langkah pertama</p></div>
+            <div class="step"><div class="step-n">2</div><p>Langkah kedua</p></div>
+            <div class="step"><div class="step-n">3</div><p>Langkah ketiga</p></div>
+        </div>
+        <div class="formula rv d3">Rumus = contoh formula di sini</div>
+    </div>
+</section>
+
+
+<!-- ===== SLIDE 4: RINGKASAN ===== -->
+<section class="slide" style="--sc:var(--blue)">
+    <div class="slide-content" style="align-items:center;text-align:center;">
+        <div class="sec rv">Ringkasan</div>
+        <h2 class="rv d1">Nama Topik: Ringkasan</h2>
+        <div class="three-col rv d2" style="margin-top:var(--gap);">
+            <div class="card accent" style="text-align:center;">
+                <div style="font-size:clamp(1.5rem,2.5vw,2rem);font-weight:800;color:var(--accent);">A</div>
+                <p>Poin kunci pertama</p>
+            </div>
+            <div class="card accent" style="text-align:center;">
+                <div style="font-size:clamp(1.5rem,2.5vw,2rem);font-weight:800;color:var(--accent);">B</div>
+                <p>Poin kunci kedua</p>
+            </div>
+            <div class="card accent" style="text-align:center;">
+                <div style="font-size:clamp(1.5rem,2.5vw,2rem);font-weight:800;color:var(--accent);">C</div>
+                <p>Poin kunci ketiga</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ===== SHARED JS (wajib, taruh sebelum </body>) ===== -->
+<script src="slides-core.js"></script>
+
+<!-- ===== JS KHUSUS TOPIK (opsional: interactive demo, dll) ===== -->
+<script>
+// Tambahkan script interaktif khusus topik ini di sini.
+// Contoh: simulasi DBSCAN, SOM demo, K-Means viz, dll.
+</script>
+
+</body>
+</html>
